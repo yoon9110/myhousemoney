@@ -42,7 +42,7 @@
     <!-- 2. 진짜 가계부 화면 -->
     <div id="app-screen">
         <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
-        
+        <button onclick="resetList()" style="width: 100%; padding: 12px; margin-top: 10px; background-color: #d32f2f; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">결제 내역 전체 삭제</button>
         <div class="form-group">
             <label>날짜</label>
             <input type="date" id="date">
@@ -240,6 +240,20 @@
             listContainer.appendChild(listItem);
         });
     });
+// 결제 내역 전체 삭제하기
+    async function resetList() {
+        if (confirm("정말로 모든 결제 내역을 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+            try {
+                const querySnapshot = await db.collection("가계부결제내역").get();
+                querySnapshot.forEach((doc) => {
+                    db.collection("가계부결제내역").doc(doc.id).delete();
+                });
+                alert("모든 내역이 깨끗하게 지워졌습니다.");
+            } catch (error) {
+                alert("삭제 권한이 없거나 오류가 발생했습니다.");
+            }
+        }
+    }
 </script>
 </body>
 </html>
