@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리집 가계부</title>
+<style>
+    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4fbf4; color: #333; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h1 { color: #2e7d32; text-align: center; font-size: 24px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #4caf50; font-size: 14px;}
+    input, select { width: 100%; padding: 10px; border: 1px solid #c8e6c9; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
+    button { background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; }
+    button:hover { background-color: #388e3c; }
+    .excel-btn { background-color: #2e7d32; margin-bottom: 25px; }
+    .list-item { border-bottom: 1px solid #e8f5e9; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+    .list-info { flex-grow: 1; }
+    .list-info p { margin: 5px 0; }
+    .tag { background-color: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 15px; font-size: 12px; font-weight: bold; margin-right: 5px; }
+    .price { font-weight: bold; font-size: 16px; color: #d32f2f; }
+    .delete-btn { background-color: #d32f2f; padding: 5px 10px; font-size: 12px; width: auto; margin-left: 10px; margin-top: 0; }
+    #app-screen { display: none; }
+</style>
+<!-- 파이어베이스 연결 도구 (서버 및 인증) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>우리집 가계부</h1>
+
+    <!-- 1. 로그인 화면 -->
+    <div id="login-screen">
+        <p style="text-align: center; color: #666; font-size: 14px;">가족 공용 암호를 입력해 주세요.</p>
+        <input type="email" id="email" value="family@myhouse.com" style="margin-bottom: 10px; background-color: #eee;" readonly>
+        <input type="password" id="pw" placeholder="비밀번호">
+        <button onclick="login()">열쇠로 열기</button>
+    </div>
+
+    <!-- 2. 진짜 가계부 화면 -->
+    <div id="app-screen">
+        <button class="excel-btn">엑셀로 저장하기 (임시버튼)</button>
+        
+        <div class="form-group">
+            <label>날짜</label>
+            <input type="date" id="date">
+        </div>
+        <div class="form-group">
+            <label>결제처</label>
+            <input type="text" id="merchant" placeholder="예: 네이버페이">
+        </div>
+        <div class="form-group">
+            <label>금액</label>
+            <input type="number" id="amount" placeholder="예: 25000">
+        </div>
+        <div class="form-group">
+            <label>항목</label>
+            <select id="category">
+                <option value="식비">식비</option>
+                <option value="생활">생활</option>
+                <option value="금융">금융</option>
+                <option value="의료/건강">의료/건강</option>
+                <option value="미용">미용</option>
+                <option value="자동차">자동차</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>산 것 메모</label>
+            <input type="text" id="memo" placeholder="예: 샴푸, 휴지">
+        </div>
+        <button onclick="saveData()">결제 입력하기</button>
+
+        <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">결제 목록</h2>
+        <div id="list"></div>
+    </div>
+</div>
+
+<script>
+    // ====================================================
+    // 1. 방금 복사한 코드를 아래에 덮어쓰세요!
+    // ====================================================
+    const firebaseConfig = {
+       apiKey: "AIzaSyDDIfxfay3hphtjDCkR6tR5fH_ubup6BsY",
+  authDomain: "myhousemoney-14c01.firebaseapp.com",
+  projectId: "myhousemoney-14c01",
+  storageBucket: "myhousemoney-14c01.firebasestorage.app",
+  messagingSenderId: "208634328082",
+  appId: "1:208634328082:web:a793e5d3fdd6838e1994cb"
+    };
+    // ====================================================
+
+    // 파이어베이스 시작
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 오늘 날짜 기본 설정
+    document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+
+    // 열쇠(암호)로 서랍장 열기
+    function login() {
+        const email = document.getElementById('email').value;
+        const pw = document.getElementById('pw').value;
+        auth.signInWithEmailAndPassword(email, pw)
+            .then(() => {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                loadData();
+            })
+            .catch((error) => {
+                alert("비밀번호가 틀렸거나 아직 등록되지 않았습니다!");
+            });
+    }
+
+    // 한 번 열어두면 계속 열려있게 기억하기
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'block';
+            loadData();
+        }
+    });
+
+    // 진짜 저장하기
+    async function saveData() {
+        const date = document.getElementById('date').value;
+        const merchant = document.getElementById('merchant').value;
+        const amount = document.getElementById('amount').value;
+        const category = document.getElementById('category').value;
+        const memo = document.getElementById('memo').value;
+
+        if(!merchant || !amount) {
+            alert("결제처와 금액을 적어주세요!");
+            return;
+        }
+
+        try {
+            await db.collection("가계부결제내역").add({
+                date: date,
+                merchant: merchant,
+                amount: Number(amount),
+                category: category,
+                memo: memo,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("저장되었습니다!");
+            document.getElementById('merchant').value = '';
+            document.getElementById('amount').value = '';
+            document.getElementById('memo').value = '';
+            loadData();
+        } catch (error) {
+            alert("저장 실패! " + error.message);
+        }
+    }
+
+    // 진짜 불러오기
+    async function loadData() {
+        const listDiv = document.getElementById('list');
+        listDiv.innerHTML = '불러오는 중...';
+
+        try {
+            const querySnapshot = await db.collection("가계부결제내역").orderBy("date", "desc").orderBy("timestamp", "desc").get();
+            listDiv.innerHTML = '';
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'list-item';
+                itemDiv.innerHTML = `
+                    <div class="list-info">
+                        <p><span class="tag">${data.category}</span> <strong>${data.merchant}</strong> (${data.date})</p>
+                        <p style="color: #666; font-size: 14px;">메모: ${data.memo}</p>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div class="price">${data.amount.toLocaleString()}원</div>
+                        <button class="delete-btn" onclick="deleteData('${doc.id}')">삭제</button>
+                    </div>
+                `;
+                listDiv.appendChild(itemDiv);
+            });
+        } catch (error) {
+            listDiv.innerHTML = "자료를 불러올 권한이 없습니다.";
+        }
+    }
+
+    // 진짜 지우기
+    async function deleteData(id) {
+        if(confirm("이 내역을 지울까요?")) {
+            await db.collection("가계부결제내역").doc(id).delete();
+            loadData();
+        }
+    }
+</script>
+</body>
+</html>
