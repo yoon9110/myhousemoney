@@ -41,7 +41,7 @@
 
     <!-- 2. 진짜 가계부 화면 -->
     <div id="app-screen">
-        <button class="excel-btn">엑셀로 저장하기 (임시버튼)</button>
+        <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
         
         <div class="form-group">
             <label>날짜</label>
@@ -189,6 +189,27 @@
         if(confirm("이 내역을 지울까요?")) {
             await db.collection("가계부결제내역").doc(id).delete();
             loadData();
+        }
+    }
+// 엑셀(CSV)로 저장하기
+    async function exportExcel() {
+        try {
+            const querySnapshot = await db.collection("가계부결제내역").orderBy("date", "desc").get();
+            let csv = '날짜,결제처,금액,항목,메모\n';
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                csv += `${data.date},${data.merchant},${data.amount},${data.category},${data.memo}\n`;
+            });
+            // 한글 깨짐 방지 및 다운로드 처리
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "우리집_가계부.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            alert("저장 권한이 없거나 오류가 발생했습니다.");
         }
     }
 </script>
