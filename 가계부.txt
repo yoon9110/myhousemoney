@@ -236,6 +236,43 @@
             }
         }
     }
+// 실시간 결제 목록 불러오기 (개별 삭제 기능 추가)
+    db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
+        const listContainer = document.getElementById("payment-list");
+        if (!listContainer) return;
+        
+        listContainer.innerHTML = "";
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const listItem = document.createElement("div");
+            listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
+            const amountStr = Number(data.amount).toLocaleString();
+            
+            listItem.innerHTML = `
+                <div>
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">${data.date}</div>
+                    <div style="font-size: 1.1em; margin-bottom: 4px;">
+                        <strong>${data.merchant}</strong> - <strong style="color: #2e7d32;">${amountStr}원</strong>
+                    </div>
+                    <div style="font-size: 0.9em; color: #555;">[항목] ${data.category}</div>
+                </div>
+                <button onclick="deleteSingleData('${doc.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0;">삭제</button>
+            `;
+            listContainer.appendChild(listItem);
+        });
+    });
+
+    // 개별 내역 지우기 기능
+    async function deleteSingleData(id) {
+        if (confirm("이 내역을 삭제하시겠습니까?")) {
+            try {
+                await db.collection("가계부결제내역").doc(id).delete();
+            } catch (error) {
+                alert("삭제 중 오류가 발생했습니다.");
+            }
+        }
+    }
 </script>
 </body>
 </html>
