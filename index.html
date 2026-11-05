@@ -60,7 +60,7 @@
             <button id="cancelEditBtn" onclick="cancelEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
         </div>
 
-        <!-- 월별 보기 필터 추가 -->
+        <!-- 월별 보기 필터 -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
             <h2 style="color: #2e7d32; margin: 0; font-size: 18px;">결제 목록 요약</h2>
             <div style="display: flex; gap: 5px; align-items: center;">
@@ -90,9 +90,8 @@
     const db = firebase.firestore();
 
     let editingId = null;
-    let allPayments = []; // 모든 결제 내역을 저장해두는 공간
+    let allPayments = []; 
 
-    // 오늘 날짜 및 이번 달 기본 세팅
     const today = new Date();
     document.getElementById('date').value = today.toISOString().substring(0, 10);
     document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
@@ -182,40 +181,55 @@
         }
     }
 
-    async function exportExcel() {
+    // 화면에 보이는 기준(월별 or 전체)으로 엑셀 저장되도록 수정
+    function exportExcel() {
         try {
-            const querySnapshot = await db.collection("가계부결제내역").orderBy("date", "desc").get();
+            const filterMonth = document.getElementById("filter-month").value;
             let csv = '날짜,결제처,금액,항목\n';
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                csv += `${data.date},${data.merchant},${data.amount},${data.category}\n`;
+            let exportCount = 0;
+
+            allPayments.forEach((data) => {
+                // 선택된 월이 있고, 내역 날짜가 그 월로 시작하지 않으면 엑셀에서 뺌
+                if (filterMonth && !data.date.startsWith(filterMonth)) {
+                    return;
+                }
+                csv += `${data.date},${data.merchant},${data.amount},${data.category || ''}\n`;
+                exportCount++;
             });
+
+            if (exportCount === 0) {
+                alert("현재 화면에 저장할 결제 내역이 없습니다.");
+                return;
+            }
+
             const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "우리집_가계부.csv";
+            
+            // 파일명 자동 변경 (예: 우리집_가계부_2026-10.csv)
+            const fileName = filterMonth ? `우리집_가계부_${filterMonth}.csv` : "우리집_가계부_전체.csv";
+            link.download = fileName;
+            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         } catch (error) {
-            alert("저장 권한이 없거나 오류가 발생했습니다.");
+            alert("저장 중 오류가 발생했습니다.");
         }
     }
 
-    // 서버에서 전체 데이터를 불러온 뒤 저장해두기
     db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
         allPayments = [];
         querySnapshot.forEach((doc) => {
             allPayments.push({ id: doc.id, ...doc.data() });
         });
-        renderList(); // 데이터 갱신 시 화면 다시 그리기
+        renderList();
     });
 
-    // 선택한 월에 맞춰 리스트와 통계 그리기
     function renderList() {
         const listContainer = document.getElementById("payment-list");
         const summaryBox = document.getElementById("summary-box");
-        const filterMonth = document.getElementById("filter-month").value; // 예: "2026-10"
+        const filterMonth = document.getElementById("filter-month").value; 
         
         if (!listContainer || !summaryBox) return;
         
@@ -224,7 +238,6 @@
         let categorySums = {};
         
         allPayments.forEach((data) => {
-            // 선택한 월(예: 2026-10)이 있고, 결제 날짜가 해당 월로 시작하지 않으면 패스
             if (filterMonth && !data.date.startsWith(filterMonth)) {
                 return;
             }
@@ -232,7 +245,6 @@
             const amountNum = Number(data.amount) || 0;
             const catName = data.category || '기타';
             
-            // 통계 합산
             totalAmount += amountNum;
             if (categorySums[catName]) {
                 categorySums[catName] += amountNum;
@@ -240,7 +252,6 @@
                 categorySums[catName] = amountNum;
             }
 
-            // 목록 HTML 생성
             const listItem = document.createElement("div");
             listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
             const amountStr = amountNum.toLocaleString();
@@ -261,7 +272,6 @@
             listContainer.appendChild(listItem);
         });
 
-        // 통계 박스 HTML 생성
         const displayMonth = filterMonth ? filterMonth.split('-')[1] + '월' : '전체';
         let summaryHTML = `<div style="font-size: 1.2em; font-weight: bold; color: #1b5e20; margin-bottom: 10px;">${displayMonth} 총 결제금액: ${totalAmount.toLocaleString()}원</div>`;
         summaryHTML += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
