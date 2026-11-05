@@ -55,7 +55,10 @@
             <input type="text" id="category" placeholder="예: 식비, 주유비, 생활용품 등">
         </div>
 
-        <button onclick="saveData()">결제 입력하기</button>
+        <div style="display: flex; gap: 10px;">
+            <button id="saveBtn" onclick="saveData()">결제 입력하기</button>
+            <button id="cancelEditBtn" onclick="cancelEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
+        </div>
 
         <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">결제 목록</h2>
         <div id="payment-list"></div>
@@ -75,6 +78,8 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
+    let editingId = null; // 현재 수정 중인 내역의 고유 ID를 기억하는 변수
 
     document.getElementById('date').value = new Date().toISOString().substring(0, 10);
 
@@ -98,7 +103,35 @@
         }
     });
 
-    // 데이터 저장하기
+    // 수정 모드 켜기 (버튼 색상 변경 및 데이터 불러오기)
+    function editData(id, date, merchant, amount, category) {
+        editingId = id;
+        document.getElementById('date').value = date;
+        document.getElementById('merchant').value = merchant;
+        document.getElementById('amount').value = amount;
+        document.getElementById('category').value = category;
+
+        document.getElementById('saveBtn').innerText = "수정 완료하기";
+        document.getElementById('saveBtn').style.backgroundColor = "#f57c00"; // 주황색으로 변경
+        document.getElementById('cancelEditBtn').style.display = "block"; // 취소 버튼 표시
+        
+        window.scrollTo(0, 0); // 입력하기 편하도록 화면을 맨 위로 올려줌
+    }
+
+    // 수정 취소하고 원래 입력 모드로 돌아가기
+    function cancelEdit() {
+        editingId = null;
+        document.getElementById('saveBtn').innerText = "결제 입력하기";
+        document.getElementById('saveBtn').style.backgroundColor = "#4caf50"; // 원래 초록색
+        document.getElementById('cancelEditBtn').style.display = "none";
+        
+        document.getElementById('merchant').value = '';
+        document.getElementById('amount').value = '';
+        document.getElementById('category').value = '';
+        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+    }
+
+    // 데이터 저장 및 수정 기능 통합
     async function saveData() {
         const date = document.getElementById('date').value;
         const merchant = document.getElementById('merchant').value;
@@ -111,19 +144,32 @@
         }
 
         try {
-            await db.collection("가계부결제내역").add({
-                date: date,
-                merchant: merchant,
-                amount: Number(amount),
-                category: category,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            alert("저장되었습니다!");
-            document.getElementById('merchant').value = '';
-            document.getElementById('amount').value = '';
-            document.getElementById('category').value = '';
+            if (editingId) {
+                // 수정 모드일 때: 기존 데이터 업데이트
+                await db.collection("가계부결제내역").doc(editingId).update({
+                    date: date,
+                    merchant: merchant,
+                    amount: Number(amount),
+                    category: category
+                });
+                alert("성공적으로 수정되었습니다!");
+                cancelEdit(); // 수정이 끝나면 입력창 초기화 및 버튼 복구
+            } else {
+                // 일반 모드일 때: 새 데이터 추가
+                await db.collection("가계부결제내역").add({
+                    date: date,
+                    merchant: merchant,
+                    amount: Number(amount),
+                    category: category,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("저장되었습니다!");
+                document.getElementById('merchant').value = '';
+                document.getElementById('amount').value = '';
+                document.getElementById('category').value = '';
+            }
         } catch (error) {
-            alert("저장 실패! " + error.message);
+            alert("처리 실패! " + error.message);
         }
     }
 
@@ -148,7 +194,7 @@
         }
     }
 
-    // 실시간 결제 목록 및 개별 삭제 기능
+    // 실시간 결제 목록 및 삭제/수정 버튼 기능
     db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
         const listContainer = document.getElementById("payment-list");
         if (!listContainer) return;
@@ -169,7 +215,10 @@
                     </div>
                     <div style="font-size: 0.9em; color: #555;">[항목] ${data.category || '기타'}</div>
                 </div>
-                <button onclick="deleteSingleData('${doc.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0;">삭제</button>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="editData('${doc.id}', '${data.date}', \`${data.merchant}\`, ${data.amount}, \`${data.category || ''}\`)" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0;">수정</button>
+                    <button onclick="deleteSingleData('${doc.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0;">삭제</button>
+                </div>
             `;
             listContainer.appendChild(listItem);
         });
