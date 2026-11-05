@@ -130,3 +130,148 @@
         document.getElementById('merchant').value = '';
         document.getElementById('amount').value = '';
         document.getElementById('category').value = '';
+        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+    }
+
+    async function saveData() {
+        const date = document.getElementById('date').value;
+        const merchant = document.getElementById('merchant').value;
+        const amount = document.getElementById('amount').value;
+        const category = document.getElementById('category').value;
+
+        if(!merchant || !amount) {
+            alert("결제처와 금액을 적어주세요!");
+            return;
+        }
+
+        try {
+            if (editingId) {
+                await db.collection("가계부결제내역").doc(editingId).update({
+                    date: date,
+                    merchant: merchant,
+                    amount: Number(amount),
+                    category: category
+                });
+                alert("성공적으로 수정되었습니다!");
+                cancelEdit();
+            } else {
+                await db.collection("가계부결제내역").add({
+                    date: date,
+                    merchant: merchant,
+                    amount: Number(amount),
+                    category: category,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("저장되었습니다!");
+                document.getElementById('merchant').value = '';
+                document.getElementById('amount').value = '';
+                document.getElementById('category').value = '';
+            }
+        } catch (error) {
+            alert("처리 실패! " + error.message);
+        }
+    }
+
+    async function exportExcel() {
+        try {
+            const querySnapshot = await db.collection("가계부결제내역").orderBy("date", "desc").get();
+            let csv = '날짜,결제처,금액,항목\n';
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                csv += `${data.date},${data.merchant},${data.amount},${data.category}\n`;
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "우리집_가계부.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            alert("저장 권한이 없거나 오류가 발생했습니다.");
+        }
+    }
+
+    // 통계 기능이 추가된 실시간 결제 목록
+    db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
+        const listContainer = document.getElementById("payment-list");
+        const summaryBox = document.getElementById("summary-box");
+        if (!listContainer || !summaryBox) return;
+        
+        listContainer.innerHTML = "";
+        
+        let totalAmount = 0;
+        let categorySums = {};
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const amountNum = Number(data.amount) || 0;
+            const catName = data.category || '기타';
+            
+            // 1. 통계 계산하기
+            totalAmount += amountNum;
+            if (categorySums[catName]) {
+                categorySums[catName] += amountNum;
+            } else {
+                categorySums[catName] = amountNum;
+            }
+
+            // 2. 리스트 화면에 그리기
+            const listItem = document.createElement("div");
+            listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
+            const amountStr = amountNum.toLocaleString();
+            
+            listItem.innerHTML = `
+                <div>
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">${data.date}</div>
+                    <div style="font-size: 1.05em; margin-bottom: 4px;">
+                        <strong>${data.merchant}</strong> - <strong style="color: #2e7d32;">${amountStr}원</strong>
+                    </div>
+                    <div style="font-size: 0.9em; color: #555;">[항목] ${catName}</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="editData('${doc.id}', '${data.date}', \`${data.merchant}\`, ${amountNum}, \`${catName}\`)" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>
+                    <button onclick="deleteSingleData('${doc.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">삭제</button>
+                </div>
+            `;
+            listContainer.appendChild(listItem);
+        });
+
+        // 3. 통계 요약 박스 화면에 그리기
+        let summaryHTML = `<div style="font-size: 1.2em; font-weight: bold; color: #1b5e20; margin-bottom: 10px;">총 결제금액: ${totalAmount.toLocaleString()}원</div>`;
+        summaryHTML += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
+        
+        for (const [cat, sum] of Object.entries(categorySums)) {
+            summaryHTML += `<span style="background: #ffffff; padding: 5px 10px; border-radius: 15px; border: 1px solid #a5d6a7; font-size: 0.9em; color: #2e7d32;">${cat}: <strong>${sum.toLocaleString()}원</strong></span>`;
+        }
+        summaryHTML += `</div>`;
+        
+        summaryBox.innerHTML = summaryHTML;
+    });
+
+    async function deleteSingleData(id) {
+        if (confirm("이 내역을 삭제하시겠습니까?")) {
+            try {
+                await db.collection("가계부결제내역").doc(id).delete();
+            } catch (error) {
+                alert("삭제 중 오류가 발생했습니다.");
+            }
+        }
+    }
+
+    async function resetList() {
+        if (confirm("정말로 모든 결제 내역을 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+            try {
+                const querySnapshot = await db.collection("가계부결제내역").get();
+                querySnapshot.forEach((doc) => {
+                    db.collection("가계부결제내역").doc(doc.id).delete();
+                });
+                alert("모든 내역이 깨끗하게 지워졌습니다.");
+            } catch (error) {
+                alert("삭제 권한이 없거나 오류가 발생했습니다.");
+            }
+        }
+    }
+</script>
+</body>
+</html>
