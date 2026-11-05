@@ -60,10 +60,16 @@
             <button id="cancelEditBtn" onclick="cancelEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
         </div>
 
-        <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">결제 목록 요약</h2>
+        <!-- 월별 보기 필터 추가 -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
+            <h2 style="color: #2e7d32; margin: 0; font-size: 18px;">결제 목록 요약</h2>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="month" id="filter-month" onchange="renderList()" style="width: auto; padding: 5px; font-size: 14px; margin: 0; border: 1px solid #a5d6a7;">
+                <button onclick="document.getElementById('filter-month').value=''; renderList();" style="width: auto; padding: 6px 10px; margin: 0; background-color: #757575; font-size: 12px;">전체</button>
+            </div>
+        </div>
         
-        <!-- 통계 요약 박스 추가 -->
-        <div id="summary-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px;"></div>
+        <div id="summary-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px;"></div>
 
         <div id="payment-list"></div>
     </div>
@@ -84,8 +90,12 @@
     const db = firebase.firestore();
 
     let editingId = null;
+    let allPayments = []; // 모든 결제 내역을 저장해두는 공간
 
-    document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+    // 오늘 날짜 및 이번 달 기본 세팅
+    const today = new Date();
+    document.getElementById('date').value = today.toISOString().substring(0, 10);
+    document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
 
     function login() {
         const email = document.getElementById('email').value;
@@ -192,23 +202,37 @@
         }
     }
 
-    // 통계 기능이 추가된 실시간 결제 목록
+    // 서버에서 전체 데이터를 불러온 뒤 저장해두기
     db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
+        allPayments = [];
+        querySnapshot.forEach((doc) => {
+            allPayments.push({ id: doc.id, ...doc.data() });
+        });
+        renderList(); // 데이터 갱신 시 화면 다시 그리기
+    });
+
+    // 선택한 월에 맞춰 리스트와 통계 그리기
+    function renderList() {
         const listContainer = document.getElementById("payment-list");
         const summaryBox = document.getElementById("summary-box");
+        const filterMonth = document.getElementById("filter-month").value; // 예: "2026-10"
+        
         if (!listContainer || !summaryBox) return;
         
         listContainer.innerHTML = "";
-        
         let totalAmount = 0;
         let categorySums = {};
         
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
+        allPayments.forEach((data) => {
+            // 선택한 월(예: 2026-10)이 있고, 결제 날짜가 해당 월로 시작하지 않으면 패스
+            if (filterMonth && !data.date.startsWith(filterMonth)) {
+                return;
+            }
+
             const amountNum = Number(data.amount) || 0;
             const catName = data.category || '기타';
             
-            // 1. 통계 계산하기
+            // 통계 합산
             totalAmount += amountNum;
             if (categorySums[catName]) {
                 categorySums[catName] += amountNum;
@@ -216,7 +240,7 @@
                 categorySums[catName] = amountNum;
             }
 
-            // 2. 리스트 화면에 그리기
+            // 목록 HTML 생성
             const listItem = document.createElement("div");
             listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
             const amountStr = amountNum.toLocaleString();
@@ -230,15 +254,16 @@
                     <div style="font-size: 0.9em; color: #555;">[항목] ${catName}</div>
                 </div>
                 <div style="display: flex; gap: 5px;">
-                    <button onclick="editData('${doc.id}', '${data.date}', \`${data.merchant}\`, ${amountNum}, \`${catName}\`)" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>
-                    <button onclick="deleteSingleData('${doc.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">삭제</button>
+                    <button onclick="editData('${data.id}', '${data.date}', \`${data.merchant}\`, ${amountNum}, \`${catName}\`)" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>
+                    <button onclick="deleteSingleData('${data.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">삭제</button>
                 </div>
             `;
             listContainer.appendChild(listItem);
         });
 
-        // 3. 통계 요약 박스 화면에 그리기
-        let summaryHTML = `<div style="font-size: 1.2em; font-weight: bold; color: #1b5e20; margin-bottom: 10px;">총 결제금액: ${totalAmount.toLocaleString()}원</div>`;
+        // 통계 박스 HTML 생성
+        const displayMonth = filterMonth ? filterMonth.split('-')[1] + '월' : '전체';
+        let summaryHTML = `<div style="font-size: 1.2em; font-weight: bold; color: #1b5e20; margin-bottom: 10px;">${displayMonth} 총 결제금액: ${totalAmount.toLocaleString()}원</div>`;
         summaryHTML += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
         
         for (const [cat, sum] of Object.entries(categorySums)) {
@@ -247,7 +272,7 @@
         summaryHTML += `</div>`;
         
         summaryBox.innerHTML = summaryHTML;
-    });
+    }
 
     async function deleteSingleData(id) {
         if (confirm("이 내역을 삭제하시겠습니까?")) {
