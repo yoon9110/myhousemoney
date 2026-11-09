@@ -11,12 +11,11 @@
     .form-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; font-weight: bold; color: #4caf50; font-size: 14px;}
     input, select { width: 100%; padding: 10px; border: 1px solid #c8e6c9; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
-    button { background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.2s; }
-    button:hover { background-color: #388e3c; }
+    button { color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.2s; }
+    button:hover { opacity: 0.9; }
     .excel-btn { background-color: #2e7d32; margin-bottom: 25px; }
     #app-screen { display: none; }
     
-    /* 탭 버튼 스타일 */
     .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
     .tab-btn { margin: 0; border-radius: 0; width: 50%; font-size: 16px; padding: 12px; }
 </style>
@@ -34,7 +33,7 @@
         <p style="text-align: center; color: #666; font-size: 14px;">가족 공용 암호를 입력해 주세요.</p>
         <input type="email" id="email" value="family@myhouse.com" style="margin-bottom: 10px; background-color: #eee;" readonly>
         <input type="password" id="pw" placeholder="비밀번호">
-        <button onclick="login()">열쇠로 열기</button>
+        <button onclick="login()" style="background-color: #4caf50;">열쇠로 열기</button>
     </div>
 
     <!-- 2. 메인 앱 화면 -->
@@ -49,31 +48,67 @@
         <!-- ================= [가계부 섹션] ================= -->
         <div id="ledger-section">
             <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
-            <button onclick="resetList()" style="width: 100%; padding: 12px; margin-top: 10px; background-color: #d32f2f; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">결제 내역 전체 삭제</button>
+            <button onclick="resetList()" style="width: 100%; padding: 12px; margin-top: 10px; background-color: #9e9e9e; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">내역 전체 삭제하기</button>
             
-            <div class="form-group" style="margin-top: 15px;">
-                <label>날짜</label>
-                <input type="date" id="date">
-            </div>
-            <div class="form-group">
-                <label>결제처</label>
-                <input type="text" id="merchant" placeholder="예: 네이버페이">
-            </div>
-            <div class="form-group">
-                <label>금액</label>
-                <input type="number" id="amount" placeholder="예: 25000">
-            </div>
-            <div class="form-group">
-                <label>항목</label>
-                <input type="text" id="category" placeholder="예: 식비, 주유비, 생활용품 등">
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <button id="saveBtn" onclick="saveData()">결제 입력하기</button>
-                <button id="cancelEditBtn" onclick="cancelEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
+            <!-- 자산 간 이체 박스 -->
+            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 25px; margin-bottom: 25px; border: 1px solid #90caf9;">
+                <h3 style="margin-top: 0; color: #1565c0; font-size: 16px; margin-bottom: 15px;">🔄 자산 이체 (내 계좌간 이동)</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                    <select id="transfer-from" style="flex: 1; font-size: 13px;"><option value="">출금할 자산</option></select>
+                    <span style="color: #1565c0; font-weight: bold;">➡</span>
+                    <select id="transfer-to" style="flex: 1; font-size: 13px;"><option value="">입금할 자산</option></select>
+                </div>
+                <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                    <input type="number" id="transfer-amount" placeholder="이체 금액 (예: 200000)" style="flex: 1; border: 1px solid #90caf9;">
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="transfer-memo" placeholder="이체 메모 (예: 매달 적금)" style="flex: 2; border: 1px solid #90caf9;">
+                    <button onclick="transferAsset()" style="flex: 1; background-color: #1565c0; margin-top: 0; padding: 10px; font-size: 14px;">이체 실행</button>
+                </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
+            <!-- 일반 결제/수입 입력 박스 -->
+            <div style="background-color: #f1f8e9; padding: 15px; border-radius: 8px; border: 1px solid #c5e1a5; margin-bottom: 25px;">
+                <h3 style="margin-top: 0; color: #33691e; font-size: 16px; margin-bottom: 15px;">💸 수입 / 지출 입력</h3>
+                <div class="form-group">
+                    <label>날짜</label>
+                    <input type="date" id="date">
+                </div>
+                
+                <!-- 새로 추가된 자산 연결 선택창 -->
+                <div class="form-group" style="background: #e8f5e9; padding: 10px; border-radius: 5px;">
+                    <label style="color: #1b5e20;">🔗 연결 자산 (어디로 들어오고 나가나요?)</label>
+                    <select id="linked-asset" style="border: 1px solid #a5d6a7;">
+                        <option value="">선택 안 함 (가계부 내역만 기록)</option>
+                    </select>
+                    <div style="font-size: 11px; color: #388e3c; margin-top: 5px;">* 자산을 선택하면 수입/지출 입력 시 잔액이 자동으로 변경됩니다.</div>
+                </div>
+
+                <div class="form-group">
+                    <label>결제처 (어디서 썼나요 / 어디서 들어왔나요)</label>
+                    <input type="text" id="merchant" placeholder="예: 네이버페이, 월급 통장">
+                </div>
+                <div class="form-group">
+                    <label>금액</label>
+                    <input type="number" id="amount" placeholder="예: 25000">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>항목</label>
+                    <input type="text" id="category" placeholder="예: 식비, 주유비, 월급 등">
+                </div>
+                
+                <div id="input-buttons" style="display: flex; gap: 10px;">
+                    <button onclick="saveData('expense')" style="flex: 1; background-color: #d32f2f;">지출 입력</button>
+                    <button onclick="saveData('income')" style="flex: 1; background-color: #1976d2;">수입 입력</button>
+                </div>
+                <div id="edit-buttons" style="display: none; gap: 10px;">
+                    <button onclick="saveData('expense')" style="flex: 1; background-color: #d32f2f;">지출로 수정</button>
+                    <button onclick="saveData('income')" style="flex: 1; background-color: #1976d2;">수입으로 수정</button>
+                    <button onclick="cancelEdit()" style="flex: 1; background-color: #9e9e9e;">취소</button>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
                 <h2 style="color: #2e7d32; margin: 0; font-size: 18px;">결제 목록 요약</h2>
                 <div style="display: flex; gap: 5px; align-items: center;">
                     <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 5px; font-size: 14px; margin: 0; border: 1px solid #a5d6a7;">
@@ -90,21 +125,33 @@
             <h2 style="color: #1b5e20; text-align: center; margin-bottom: 25px;">현재 우리집 자산 기록하기</h2>
             
             <div class="form-group">
-                <label>🏦 은행 (예금, 적금, 현금 등)</label>
-                <input type="number" id="asset-bank" placeholder="예: 15000000">
+                <label>분류</label>
+                <select id="asset-type">
+                    <option value="bank">🏦 은행 (예금, 적금, 현금 등)</option>
+                    <option value="invest">📈 투자 (주식, 펀드, 코인 등)</option>
+                </select>
             </div>
             <div class="form-group">
-                <label>📈 투자 (주식, 펀드, 코인 등)</label>
-                <input type="number" id="asset-invest" placeholder="예: 5000000">
+                <label>자산명 (어디에 있나요?)</label>
+                <input type="text" id="asset-name" placeholder="예: 우리은행, 삼성전자, 빗썸">
             </div>
-            <button onclick="saveAssets()" style="background-color: #1b5e20;">자산 금액 저장하기</button>
+            <div class="form-group">
+                <label>잔액 및 금액</label>
+                <input type="number" id="asset-amount" placeholder="예: 15000000">
+            </div>
 
-            <!-- 자산 표시 화면 -->
-            <div id="asset-summary" style="background-color: #e8f5e9; padding: 30px 20px; border-radius: 8px; margin-top: 30px; text-align: center; border: 2px solid #c8e6c9;">
+            <div style="display: flex; gap: 10px;">
+                <button id="saveAssetBtn" onclick="saveAssetData()" style="background-color: #1b5e20;">자산 추가하기</button>
+                <button id="cancelAssetEditBtn" onclick="cancelAssetEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
+            </div>
+
+            <div id="asset-summary" style="background-color: #e8f5e9; padding: 25px 20px; border-radius: 8px; margin-top: 30px; text-align: center; border: 2px solid #c8e6c9;">
                 <div style="color: #666; font-size: 14px;">데이터를 불러오는 중입니다...</div>
             </div>
-        </div>
 
+            <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">자산 상세 목록</h2>
+            <div id="asset-list"></div>
+        </div>
     </div>
 </div>
 
@@ -125,14 +172,14 @@
     let editingId = null;
     let allPayments = []; 
     let currentCategoryFilter = null; 
+    
+    let editingAssetId = null; 
+    let allAssets = []; 
 
     const today = new Date();
     document.getElementById('date').value = today.toISOString().substring(0, 10);
     document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
 
-    // ==========================================
-    // 탭 전환 기능
-    // ==========================================
     function showSection(section) {
         if (section === 'ledger') {
             document.getElementById('ledger-section').style.display = 'block';
@@ -151,62 +198,60 @@
         }
     }
 
-    // ==========================================
-    // 로그인 기능
-    // ==========================================
     function login() {
         const email = document.getElementById('email').value;
         const pw = document.getElementById('pw').value;
-        auth.signInWithEmailAndPassword(email, pw)
-            .then(() => {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
-            })
-            .catch((error) => {
-                alert("비밀번호가 틀렸거나 아직 등록되지 않았습니다!");
-            });
+        auth.signInWithEmailAndPassword(email, pw).then(() => {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'block';
+        }).catch((error) => {
+            alert("비밀번호가 틀렸거나 아직 등록되지 않았습니다!");
+        });
     }
 
     auth.onAuthStateChanged((user) => {
         if (user) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'block';
-            showSection('ledger'); // 기본으로 가계부 화면 띄우기
+            showSection('ledger'); 
         }
     });
 
     // ==========================================
     // [가계부] 관련 코드
     // ==========================================
-    function editData(id, date, merchant, amount, category) {
+    function editData(id, date, merchant, amount, category, linkedAssetId) {
         editingId = id;
         document.getElementById('date').value = date;
         document.getElementById('merchant').value = merchant;
         document.getElementById('amount').value = amount;
         document.getElementById('category').value = category;
+        if(linkedAssetId) document.getElementById('linked-asset').value = linkedAssetId;
 
-        document.getElementById('saveBtn').innerText = "수정 완료하기";
-        document.getElementById('saveBtn').style.backgroundColor = "#f57c00";
-        document.getElementById('cancelEditBtn').style.display = "block";
+        document.getElementById('input-buttons').style.display = "none";
+        document.getElementById('edit-buttons').style.display = "flex";
         window.scrollTo(0, 0);
     }
 
     function cancelEdit() {
         editingId = null;
-        document.getElementById('saveBtn').innerText = "결제 입력하기";
-        document.getElementById('saveBtn').style.backgroundColor = "#4caf50";
-        document.getElementById('cancelEditBtn').style.display = "none";
+        document.getElementById('input-buttons').style.display = "flex";
+        document.getElementById('edit-buttons').style.display = "none";
+        
         document.getElementById('merchant').value = '';
         document.getElementById('amount').value = '';
         document.getElementById('category').value = '';
+        document.getElementById('linked-asset').value = '';
         document.getElementById('date').value = new Date().toISOString().substring(0, 10);
     }
 
-    async function saveData() {
+    async function saveData(type) {
         const date = document.getElementById('date').value;
         const merchant = document.getElementById('merchant').value;
         const amount = document.getElementById('amount').value;
         const category = document.getElementById('category').value;
+        const linkedAssetId = document.getElementById('linked-asset').value;
+        const amountNum = Number(amount);
 
         if(!merchant || !amount) {
             alert("결제처와 금액을 적어주세요!");
@@ -215,23 +260,90 @@
 
         try {
             if (editingId) {
+                // 수정 시에는 기존 자산 금액을 자동복구하는 로직이 복잡하여 내역만 수정합니다.
                 await db.collection("가계부결제내역").doc(editingId).update({
-                    date: date, merchant: merchant, amount: Number(amount), category: category
+                    date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId
                 });
-                alert("성공적으로 수정되었습니다!");
+                alert("내역이 수정되었습니다!");
                 cancelEdit();
             } else {
+                // 1. 자산이 선택되어 있다면 자산 금액 먼저 업데이트
+                if (linkedAssetId) {
+                    const targetAsset = allAssets.find(a => a.id === linkedAssetId);
+                    if (targetAsset) {
+                        let newAmount = targetAsset.amount;
+                        if (type === 'income') newAmount += amountNum; // 수입이면 증가
+                        else if (type === 'expense') newAmount -= amountNum; // 지출이면 차감
+                        
+                        await db.collection("가계부자산목록").doc(linkedAssetId).update({ amount: newAmount });
+                    }
+                }
+
+                // 2. 가계부 내역 저장
                 await db.collection("가계부결제내역").add({
-                    date: date, merchant: merchant, amount: Number(amount), category: category,
+                    date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert("저장되었습니다!");
+                
+                alert(linkedAssetId ? "자산 잔액이 자동으로 변경되고 내역이 저장되었습니다!" : "내역이 저장되었습니다!");
                 document.getElementById('merchant').value = '';
                 document.getElementById('amount').value = '';
                 document.getElementById('category').value = '';
+                document.getElementById('linked-asset').value = '';
             }
         } catch (error) {
             alert("처리 실패! " + error.message);
+        }
+    }
+
+    async function transferAsset() {
+        const fromId = document.getElementById('transfer-from').value;
+        const toId = document.getElementById('transfer-to').value;
+        const amountStr = document.getElementById('transfer-amount').value;
+        const memoStr = document.getElementById('transfer-memo').value;
+        const amount = Number(amountStr);
+
+        if(!fromId || !toId || !amountStr) {
+            alert("출금할 자산, 입금할 자산, 그리고 이체할 금액을 입력해주세요!");
+            return;
+        }
+        if(fromId === toId) {
+            alert("출금 자산과 입금 자산이 같습니다. 다르게 선택해주세요.");
+            return;
+        }
+        if(amount <= 0) {
+            alert("금액은 0원보다 커야 합니다.");
+            return;
+        }
+
+        const fromAsset = allAssets.find(a => a.id === fromId);
+        const toAsset = allAssets.find(a => a.id === toId);
+
+        if(fromAsset.amount < amount) {
+            if(!confirm(`출금할 자산(${fromAsset.name})의 잔액이 부족합니다. 계속 진행하시겠습니까?`)) return;
+        }
+
+        try {
+            await db.collection("가계부자산목록").doc(fromId).update({ amount: fromAsset.amount - amount });
+            await db.collection("가계부자산목록").doc(toId).update({ amount: toAsset.amount + amount });
+            
+            await db.collection("가계부결제내역").add({
+                date: document.getElementById('date').value,
+                merchant: `${fromAsset.name} ➔ ${toAsset.name}`,
+                amount: amount,
+                category: "자산이체",
+                type: 'transfer',
+                memo: memoStr,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            alert(`✅ 자산 통장이 업데이트되고, 이체 내역이 목록에 저장되었습니다!`);
+            document.getElementById('transfer-amount').value = '';
+            document.getElementById('transfer-from').value = '';
+            document.getElementById('transfer-to').value = '';
+            document.getElementById('transfer-memo').value = '';
+        } catch (error) {
+            alert("이체 중 오류 발생: " + error.message);
         }
     }
 
@@ -244,7 +356,7 @@
     function exportExcel() {
         try {
             const filterMonth = document.getElementById("filter-month").value;
-            let csv = '날짜,결제처,금액,항목\n';
+            let csv = '날짜,구분,결제처,금액,항목,메모\n';
             let exportCount = 0;
 
             allPayments.forEach((data) => {
@@ -252,30 +364,25 @@
                 const catName = data.category || '기타';
                 if (currentCategoryFilter && catName !== currentCategoryFilter) return;
 
-                csv += `${data.date},${data.merchant},${data.amount},${catName}\n`;
+                const typeStr = data.type === 'income' ? '수입' : (data.type === 'transfer' ? '이체' : '지출');
+                const memoStr = data.memo || '';
+                
+                csv += `${data.date},${typeStr},${data.merchant},${data.amount},${catName},${memoStr}\n`;
                 exportCount++;
             });
 
-            if (exportCount === 0) {
-                alert("현재 화면에 저장할 결제 내역이 없습니다.");
-                return;
-            }
+            if (exportCount === 0) { alert("저장할 결제 내역이 없습니다."); return; }
 
             const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            
             let fileName = filterMonth ? `우리집_가계부_${filterMonth}` : "우리집_가계부_전체";
             if (currentCategoryFilter) fileName += `_${currentCategoryFilter}`;
-            fileName += ".csv";
-            
-            link.download = fileName;
+            link.download = fileName + ".csv";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        } catch (error) {
-            alert("저장 중 오류가 발생했습니다.");
-        }
+        } catch (error) { alert("저장 중 오류가 발생했습니다."); }
     }
 
     db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
@@ -294,35 +401,56 @@
         if (!listContainer || !summaryBox) return;
         
         listContainer.innerHTML = "";
-        let totalAmount = 0;
-        let categorySums = {};
+        let totalExpense = 0;
+        let totalIncome = 0;
+        let expenseSums = {};
+        let incomeSums = {};
         
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
             const amountNum = Number(data.amount) || 0;
             const catName = data.category || '기타';
-            
-            totalAmount += amountNum;
-            if (categorySums[catName]) categorySums[catName] += amountNum;
-            else categorySums[catName] = amountNum;
+            const type = data.type || 'expense';
+
+            if (type === 'expense') {
+                totalExpense += amountNum;
+                if (expenseSums[catName]) expenseSums[catName] += amountNum;
+                else expenseSums[catName] = amountNum;
+            } else if (type === 'income') {
+                totalIncome += amountNum;
+                if (incomeSums[catName]) incomeSums[catName] += amountNum;
+                else incomeSums[catName] = amountNum;
+            }
         });
 
         const displayMonth = filterMonth ? filterMonth.split('-')[1] + '월' : '전체';
-        let summaryHTML = `<div style="font-size: 1.1em; font-weight: bold; color: #1b5e20; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <span>${displayMonth} 총 지출: ${totalAmount.toLocaleString()}원</span>
-            ${currentCategoryFilter ? `<button onclick="setCategoryFilter(null)" style="background: #bdbdbd; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; margin:0;">필터 해제 ✕</button>` : ''}
+        let summaryHTML = `<div style="font-size: 1.05em; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <span style="color: #1976d2;">📈 ${displayMonth} 수입: ${totalIncome.toLocaleString()}원</span>
+                <span style="color: #d32f2f;">📉 ${displayMonth} 지출: ${totalExpense.toLocaleString()}원</span>
+            </div>
+            ${currentCategoryFilter ? `<button onclick="setCategoryFilter(null)" style="background: #bdbdbd; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; margin:0; width: auto;">필터 해제 ✕</button>` : ''}
         </div>`;
         
         summaryHTML += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">`;
-        for (const [cat, sum] of Object.entries(categorySums)) {
+        
+        for (const [cat, sum] of Object.entries(incomeSums)) {
             const isSelected = currentCategoryFilter === cat;
-            const bg = isSelected ? '#4caf50' : '#ffffff';
-            const color = isSelected ? '#ffffff' : '#2e7d32';
-            const border = isSelected ? '#4caf50' : '#a5d6a7';
-
+            const bg = isSelected ? '#1976d2' : '#ffffff';
+            const color = isSelected ? '#ffffff' : '#1976d2';
+            const border = isSelected ? '#1976d2' : '#90caf9';
             summaryHTML += `<button onclick="setCategoryFilter('${cat}')" style="background: ${bg}; padding: 8px 10px; border-radius: 10px; border: 1px solid ${border}; font-size: 0.85em; color: ${color}; transition: 0.2s; margin:0; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; word-break: keep-all;">
-                <span>${cat}</span>
-                <strong>${sum.toLocaleString()}원</strong>
+                <span>(수) ${cat}</span><strong>${sum.toLocaleString()}원</strong>
+            </button>`;
+        }
+        
+        for (const [cat, sum] of Object.entries(expenseSums)) {
+            const isSelected = currentCategoryFilter === cat;
+            const bg = isSelected ? '#d32f2f' : '#ffffff';
+            const color = isSelected ? '#ffffff' : '#d32f2f';
+            const border = isSelected ? '#d32f2f' : '#ef9a9a';
+            summaryHTML += `<button onclick="setCategoryFilter('${cat}')" style="background: ${bg}; padding: 8px 10px; border-radius: 10px; border: 1px solid ${border}; font-size: 0.85em; color: ${color}; transition: 0.2s; margin:0; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; word-break: keep-all;">
+                <span>(지) ${cat}</span><strong>${sum.toLocaleString()}원</strong>
             </button>`;
         }
         summaryHTML += `</div>`;
@@ -334,19 +462,39 @@
             if (currentCategoryFilter && catName !== currentCategoryFilter) return;
 
             const amountNum = Number(data.amount) || 0;
+            const type = data.type || 'expense';
+            
+            let amountStr = '';
+            let typeTag = '';
+            
+            if (type === 'income') {
+                amountStr = `<strong style="color: #1976d2;">+ ${amountNum.toLocaleString()}원</strong>`;
+                typeTag = `<span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">수입</span>`;
+            } else if (type === 'transfer') {
+                amountStr = `<strong style="color: #757575;">${amountNum.toLocaleString()}원 이동</strong>`;
+                typeTag = `<span style="background: #eeeeee; color: #757575; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">이체</span>`;
+            } else { 
+                amountStr = `<strong style="color: #d32f2f;">- ${amountNum.toLocaleString()}원</strong>`;
+                typeTag = `<span style="background: #ffebee; color: #d32f2f; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">지출</span>`;
+            }
+            
+            const memoHtml = data.memo ? `<div style="font-size: 0.85em; color: #757575; margin-top: 5px;">📝 메모: ${data.memo}</div>` : '';
+            const linkedAssetStr = data.linkedAssetId ? ` (연결 자산)` : '';
+
             const listItem = document.createElement("div");
             listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
             
             listItem.innerHTML = `
-                <div>
-                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">${data.date}</div>
+                <div style="flex: 1;">
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">${data.date} ${typeTag}</div>
                     <div style="font-size: 1.05em; margin-bottom: 4px;">
-                        <strong>${data.merchant}</strong> - <strong style="color: #2e7d32;">${amountNum.toLocaleString()}원</strong>
+                        <strong>${data.merchant}</strong> - ${amountStr}
                     </div>
-                    <div style="font-size: 0.9em; color: #555;">[항목] ${catName}</div>
+                    <div style="font-size: 0.9em; color: #555;">[항목] ${catName}${linkedAssetStr}</div>
+                    ${memoHtml}
                 </div>
-                <div style="display: flex; gap: 5px;">
-                    <button onclick="editData('${data.id}', '${data.date}', \`${data.merchant}\`, ${amountNum}, \`${catName}\`)" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>
+                <div style="display: flex; gap: 5px; flex-direction: column;">
+                    ${type !== 'transfer' ? `<button onclick="editData('${data.id}', '${data.date}', \`${data.merchant}\`, ${amountNum}, \`${catName}\`, '${data.linkedAssetId || ''}')" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>` : ''}
                     <button onclick="deleteSingleData('${data.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">삭제</button>
                 </div>
             `;
@@ -355,7 +503,7 @@
     }
 
     async function deleteSingleData(id) {
-        if (confirm("이 내역을 삭제하시겠습니까?")) {
+        if (confirm("이 내역을 삭제하시겠습니까? (이미 변경된 자산 잔고는 자동으로 되돌아가지 않습니다.)")) {
             await db.collection("가계부결제내역").doc(id).delete();
         }
     }
@@ -373,58 +521,152 @@
     // ==========================================
     // [자산] 관련 코드
     // ==========================================
-    
-    // 자산 정보 저장하기
-    async function saveAssets() {
-        const bank = document.getElementById('asset-bank').value;
-        const invest = document.getElementById('asset-invest').value;
+    function editAssetData(id, type, name, amount) {
+        editingAssetId = id;
+        document.getElementById('asset-type').value = type;
+        document.getElementById('asset-name').value = name;
+        document.getElementById('asset-amount').value = amount;
+
+        document.getElementById('saveAssetBtn').innerText = "수정 완료하기";
+        document.getElementById('saveAssetBtn').style.backgroundColor = "#f57c00";
+        document.getElementById('cancelAssetEditBtn').style.display = "block";
+        window.scrollTo(0, 0);
+    }
+
+    function cancelAssetEdit() {
+        editingAssetId = null;
+        document.getElementById('saveAssetBtn').innerText = "자산 추가하기";
+        document.getElementById('saveAssetBtn').style.backgroundColor = "#1b5e20";
+        document.getElementById('cancelAssetEditBtn').style.display = "none";
+        document.getElementById('asset-name').value = '';
+        document.getElementById('asset-amount').value = '';
+    }
+
+    async function saveAssetData() {
+        const type = document.getElementById('asset-type').value;
+        const name = document.getElementById('asset-name').value;
+        const amount = document.getElementById('asset-amount').value;
         
+        if(!name || !amount) {
+            alert("자산명(어디에 있는지)과 금액을 적어주세요!");
+            return;
+        }
+
         try {
-            // '가계부자산' 서랍장에 '현황'이라는 이름으로 덮어쓰기 저장
-            await db.collection("가계부자산").doc("현황").set({
-                bank: Number(bank) || 0,
-                invest: Number(invest) || 0,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            alert("자산이 안전하게 저장되었습니다!");
+            if (editingAssetId) {
+                await db.collection("가계부자산목록").doc(editingAssetId).update({
+                    type: type, name: name, amount: Number(amount)
+                });
+                alert("자산이 수정되었습니다!");
+                cancelAssetEdit();
+            } else {
+                await db.collection("가계부자산목록").add({
+                    type: type, name: name, amount: Number(amount),
+                    timestamp: Date.now() 
+                });
+                alert("새로운 자산이 추가되었습니다!");
+                document.getElementById('asset-name').value = '';
+                document.getElementById('asset-amount').value = '';
+            }
         } catch (error) {
             alert("자산 저장 실패! " + error.message);
         }
     }
 
-    // 실시간으로 자산 정보 불러와서 화면에 보여주기
-    db.collection("가계부자산").doc("현황").onSnapshot((doc) => {
-        const assetSummary = document.getElementById("asset-summary");
-        if (!assetSummary) return;
+    async function deleteAssetData(id) {
+        if (confirm("이 자산을 삭제하시겠습니까?")) {
+            await db.collection("가계부자산목록").doc(id).delete();
+        }
+    }
+
+    // 드롭다운 업데이트 (이체 및 일반 입력창)
+    function updateAssetDropdowns() {
+        let optionsHtml = '<option value="">선택하세요 / 선택 안 함</option>';
+        allAssets.forEach(asset => {
+            optionsHtml += `<option value="${asset.id}">${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`;
+        });
         
-        if (doc.exists) {
+        const fromSelect = document.getElementById('transfer-from');
+        const toSelect = document.getElementById('transfer-to');
+        const linkedSelect = document.getElementById('linked-asset');
+
+        if(fromSelect) {
+            const prevFrom = fromSelect.value;
+            fromSelect.innerHTML = optionsHtml;
+            if (prevFrom && allAssets.find(a => a.id === prevFrom)) fromSelect.value = prevFrom;
+        }
+        if(toSelect) {
+            const prevTo = toSelect.value;
+            toSelect.innerHTML = optionsHtml;
+            if (prevTo && allAssets.find(a => a.id === prevTo)) toSelect.value = prevTo;
+        }
+        if(linkedSelect) {
+            const prevLinked = linkedSelect.value;
+            linkedSelect.innerHTML = optionsHtml;
+            if (prevLinked && allAssets.find(a => a.id === prevLinked)) linkedSelect.value = prevLinked;
+        }
+    }
+
+    db.collection("가계부자산목록").orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
+        const assetSummary = document.getElementById("asset-summary");
+        const assetList = document.getElementById("asset-list");
+        
+        allAssets = []; 
+        let bankTotal = 0;
+        let investTotal = 0;
+
+        querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const bank = data.bank || 0;
-            const invest = data.invest || 0;
-            const total = bank + invest;
+            const amt = Number(data.amount) || 0;
+            allAssets.push({ id: doc.id, type: data.type, name: data.name, amount: amt });
             
-            // 입력칸에도 기존 금액 채워주기
-            document.getElementById('asset-bank').value = bank;
-            document.getElementById('asset-invest').value = invest;
+            if (data.type === 'bank') bankTotal += amt;
+            else if (data.type === 'invest') investTotal += amt;
+        });
+
+        // 자산이 추가/변경될 때마다 가계부 입력창의 선택 목록 갱신
+        updateAssetDropdowns();
+
+        if (!assetSummary || !assetList) return;
+        assetList.innerHTML = "";
+        
+        allAssets.forEach((data) => {
+            const typeEmoji = data.type === 'bank' ? '🏦 은행' : '📈 투자';
+            const listItem = document.createElement("div");
+            listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
             
-            assetSummary.innerHTML = `
-                <div style="font-size: 1.1em; color: #555; margin-bottom: 5px;">현재 총 자산</div>
-                <div style="font-size: 2.2em; font-weight: bold; color: #1b5e20; margin-bottom: 25px;">${total.toLocaleString()}원</div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
-                        <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">🏦 은행</div>
-                        <div style="font-size: 1.2em; font-weight: bold; color: #2e7d32;">${bank.toLocaleString()}원</div>
+            listItem.innerHTML = `
+                <div>
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">[${typeEmoji}]</div>
+                    <div style="font-size: 1.05em; margin-bottom: 4px;">
+                        <strong>${data.name}</strong>
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
-                        <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">📈 투자</div>
-                        <div style="font-size: 1.2em; font-weight: bold; color: #2e7d32;">${invest.toLocaleString()}원</div>
-                    </div>
+                    <div style="font-size: 1em; color: #2e7d32; font-weight: bold;">${data.amount.toLocaleString()}원</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="editAssetData('${data.id}', '${data.type}', \`${data.name}\`, ${data.amount})" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>
+                    <button onclick="deleteAssetData('${data.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">삭제</button>
                 </div>
             `;
-        } else {
-            assetSummary.innerHTML = "<div style='color: #666; font-size: 15px;'>아직 저장된 자산이 없습니다.<br>위에서 금액을 입력하고 저장해주세요!</div>";
-        }
+            assetList.appendChild(listItem);
+        });
+
+        const total = bankTotal + investTotal;
+        assetSummary.innerHTML = `
+            <div style="font-size: 1.1em; color: #555; margin-bottom: 5px;">현재 총 자산</div>
+            <div style="font-size: 2.2em; font-weight: bold; color: #1b5e20; margin-bottom: 25px;">${total.toLocaleString()}원</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">🏦 총 은행 잔고</div>
+                    <div style="font-size: 1.2em; font-weight: bold; color: #2e7d32;">${bankTotal.toLocaleString()}원</div>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+                    <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">📈 총 투자 금액</div>
+                    <div style="font-size: 1.2em; font-weight: bold; color: #2e7d32;">${investTotal.toLocaleString()}원</div>
+                </div>
+            </div>
+        `;
     });
 
 </script>
