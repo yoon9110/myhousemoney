@@ -3,18 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>우리집 가계부</title>
+<title>우리집 가계부 & 자산</title>
 <style>
     body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4fbf4; color: #333; margin: 0; padding: 20px; }
     .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1 { color: #2e7d32; text-align: center; font-size: 24px; }
+    h1 { color: #2e7d32; text-align: center; font-size: 24px; margin-bottom: 25px; }
     .form-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; font-weight: bold; color: #4caf50; font-size: 14px;}
     input, select { width: 100%; padding: 10px; border: 1px solid #c8e6c9; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
-    button { background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; }
+    button { background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.2s; }
     button:hover { background-color: #388e3c; }
     .excel-btn { background-color: #2e7d32; margin-bottom: 25px; }
     #app-screen { display: none; }
+    
+    /* 탭 버튼 스타일 */
+    .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
+    .tab-btn { margin: 0; border-radius: 0; width: 50%; font-size: 16px; padding: 12px; }
 </style>
 <!-- 파이어베이스 연결 도구 -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -23,7 +27,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>우리집 가계부</h1>
+    <h1>우리집 가계부 🏡</h1>
 
     <!-- 1. 로그인 화면 -->
     <div id="login-screen">
@@ -33,45 +37,74 @@
         <button onclick="login()">열쇠로 열기</button>
     </div>
 
-    <!-- 2. 가계부 화면 -->
+    <!-- 2. 메인 앱 화면 -->
     <div id="app-screen">
-        <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
-        <button onclick="resetList()" style="width: 100%; padding: 12px; margin-top: 10px; background-color: #d32f2f; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">결제 내역 전체 삭제</button>
         
-        <div class="form-group" style="margin-top: 15px;">
-            <label>날짜</label>
-            <input type="date" id="date">
-        </div>
-        <div class="form-group">
-            <label>결제처</label>
-            <input type="text" id="merchant" placeholder="예: 네이버페이">
-        </div>
-        <div class="form-group">
-            <label>금액</label>
-            <input type="number" id="amount" placeholder="예: 25000">
-        </div>
-        <div class="form-group">
-            <label>항목</label>
-            <input type="text" id="category" placeholder="예: 식비, 주유비, 생활용품 등">
+        <!-- 탭 네비게이션 -->
+        <div class="tab-container">
+            <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white;">가계부 내역</button>
+            <button id="btn-asset" class="tab-btn" onclick="showSection('asset')" style="background-color: #e8f5e9; color: #2e7d32;">자산 현황</button>
         </div>
 
-        <div style="display: flex; gap: 10px;">
-            <button id="saveBtn" onclick="saveData()">결제 입력하기</button>
-            <button id="cancelEditBtn" onclick="cancelEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
+        <!-- ================= [가계부 섹션] ================= -->
+        <div id="ledger-section">
+            <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
+            <button onclick="resetList()" style="width: 100%; padding: 12px; margin-top: 10px; background-color: #d32f2f; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">결제 내역 전체 삭제</button>
+            
+            <div class="form-group" style="margin-top: 15px;">
+                <label>날짜</label>
+                <input type="date" id="date">
+            </div>
+            <div class="form-group">
+                <label>결제처</label>
+                <input type="text" id="merchant" placeholder="예: 네이버페이">
+            </div>
+            <div class="form-group">
+                <label>금액</label>
+                <input type="number" id="amount" placeholder="예: 25000">
+            </div>
+            <div class="form-group">
+                <label>항목</label>
+                <input type="text" id="category" placeholder="예: 식비, 주유비, 생활용품 등">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button id="saveBtn" onclick="saveData()">결제 입력하기</button>
+                <button id="cancelEditBtn" onclick="cancelEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
+                <h2 style="color: #2e7d32; margin: 0; font-size: 18px;">결제 목록 요약</h2>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 5px; font-size: 14px; margin: 0; border: 1px solid #a5d6a7;">
+                    <button onclick="document.getElementById('filter-month').value=''; currentCategoryFilter=null; renderList();" style="width: auto; padding: 6px 10px; margin: 0; background-color: #757575; font-size: 12px;">전체</button>
+                </div>
+            </div>
+            
+            <div id="summary-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px;"></div>
+            <div id="payment-list"></div>
         </div>
 
-        <!-- 월별 보기 필터 -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
-            <h2 style="color: #2e7d32; margin: 0; font-size: 18px;">결제 목록 요약</h2>
-            <div style="display: flex; gap: 5px; align-items: center;">
-                <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 5px; font-size: 14px; margin: 0; border: 1px solid #a5d6a7;">
-                <button onclick="document.getElementById('filter-month').value=''; currentCategoryFilter=null; renderList();" style="width: auto; padding: 6px 10px; margin: 0; background-color: #757575; font-size: 12px;">전체</button>
+        <!-- ================= [자산 섹션] ================= -->
+        <div id="asset-section" style="display: none;">
+            <h2 style="color: #1b5e20; text-align: center; margin-bottom: 25px;">현재 우리집 자산 기록하기</h2>
+            
+            <div class="form-group">
+                <label>🏦 은행 (예금, 적금, 현금 등)</label>
+                <input type="number" id="asset-bank" placeholder="예: 15000000">
+            </div>
+            <div class="form-group">
+                <label>📈 투자 (주식, 펀드, 코인 등)</label>
+                <input type="number" id="asset-invest" placeholder="예: 5000000">
+            </div>
+            <button onclick="saveAssets()" style="background-color: #1b5e20;">자산 금액 저장하기</button>
+
+            <!-- 자산 표시 화면 -->
+            <div id="asset-summary" style="background-color: #e8f5e9; padding: 30px 20px; border-radius: 8px; margin-top: 30px; text-align: center; border: 2px solid #c8e6c9;">
+                <div style="color: #666; font-size: 14px;">데이터를 불러오는 중입니다...</div>
             </div>
         </div>
-        
-        <div id="summary-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px;"></div>
 
-        <div id="payment-list"></div>
     </div>
 </div>
 
@@ -97,6 +130,30 @@
     document.getElementById('date').value = today.toISOString().substring(0, 10);
     document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
 
+    // ==========================================
+    // 탭 전환 기능
+    // ==========================================
+    function showSection(section) {
+        if (section === 'ledger') {
+            document.getElementById('ledger-section').style.display = 'block';
+            document.getElementById('asset-section').style.display = 'none';
+            document.getElementById('btn-ledger').style.backgroundColor = '#2e7d32';
+            document.getElementById('btn-ledger').style.color = 'white';
+            document.getElementById('btn-asset').style.backgroundColor = '#e8f5e9';
+            document.getElementById('btn-asset').style.color = '#2e7d32';
+        } else if (section === 'asset') {
+            document.getElementById('ledger-section').style.display = 'none';
+            document.getElementById('asset-section').style.display = 'block';
+            document.getElementById('btn-asset').style.backgroundColor = '#2e7d32';
+            document.getElementById('btn-asset').style.color = 'white';
+            document.getElementById('btn-ledger').style.backgroundColor = '#e8f5e9';
+            document.getElementById('btn-ledger').style.color = '#2e7d32';
+        }
+    }
+
+    // ==========================================
+    // 로그인 기능
+    // ==========================================
     function login() {
         const email = document.getElementById('email').value;
         const pw = document.getElementById('pw').value;
@@ -114,9 +171,13 @@
         if (user) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'block';
+            showSection('ledger'); // 기본으로 가계부 화면 띄우기
         }
     });
 
+    // ==========================================
+    // [가계부] 관련 코드
+    // ==========================================
     function editData(id, date, merchant, amount, category) {
         editingId = id;
         document.getElementById('date').value = date;
@@ -127,7 +188,6 @@
         document.getElementById('saveBtn').innerText = "수정 완료하기";
         document.getElementById('saveBtn').style.backgroundColor = "#f57c00";
         document.getElementById('cancelEditBtn').style.display = "block";
-        
         window.scrollTo(0, 0);
     }
 
@@ -136,7 +196,6 @@
         document.getElementById('saveBtn').innerText = "결제 입력하기";
         document.getElementById('saveBtn').style.backgroundColor = "#4caf50";
         document.getElementById('cancelEditBtn').style.display = "none";
-        
         document.getElementById('merchant').value = '';
         document.getElementById('amount').value = '';
         document.getElementById('category').value = '';
@@ -157,19 +216,13 @@
         try {
             if (editingId) {
                 await db.collection("가계부결제내역").doc(editingId).update({
-                    date: date,
-                    merchant: merchant,
-                    amount: Number(amount),
-                    category: category
+                    date: date, merchant: merchant, amount: Number(amount), category: category
                 });
                 alert("성공적으로 수정되었습니다!");
                 cancelEdit();
             } else {
                 await db.collection("가계부결제내역").add({
-                    date: date,
-                    merchant: merchant,
-                    amount: Number(amount),
-                    category: category,
+                    date: date, merchant: merchant, amount: Number(amount), category: category,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 alert("저장되었습니다!");
@@ -183,11 +236,8 @@
     }
 
     function setCategoryFilter(category) {
-        if (currentCategoryFilter === category) {
-            currentCategoryFilter = null; 
-        } else {
-            currentCategoryFilter = category;
-        }
+        if (currentCategoryFilter === category) currentCategoryFilter = null; 
+        else currentCategoryFilter = category;
         renderList();
     }
 
@@ -199,7 +249,6 @@
 
             allPayments.forEach((data) => {
                 if (filterMonth && !data.date.startsWith(filterMonth)) return;
-                
                 const catName = data.category || '기타';
                 if (currentCategoryFilter && catName !== currentCategoryFilter) return;
 
@@ -250,25 +299,20 @@
         
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
-
             const amountNum = Number(data.amount) || 0;
             const catName = data.category || '기타';
             
             totalAmount += amountNum;
-            if (categorySums[catName]) {
-                categorySums[catName] += amountNum;
-            } else {
-                categorySums[catName] = amountNum;
-            }
+            if (categorySums[catName]) categorySums[catName] += amountNum;
+            else categorySums[catName] = amountNum;
         });
 
         const displayMonth = filterMonth ? filterMonth.split('-')[1] + '월' : '전체';
         let summaryHTML = `<div style="font-size: 1.1em; font-weight: bold; color: #1b5e20; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <span>${displayMonth} 총 결제금액: ${totalAmount.toLocaleString()}원</span>
+            <span>${displayMonth} 총 지출: ${totalAmount.toLocaleString()}원</span>
             ${currentCategoryFilter ? `<button onclick="setCategoryFilter(null)" style="background: #bdbdbd; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; margin:0;">필터 해제 ✕</button>` : ''}
         </div>`;
         
-        // 한 줄에 2개씩 나오는 바둑판(Grid) 스타일 적용
         summaryHTML += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">`;
         for (const [cat, sum] of Object.entries(categorySums)) {
             const isSelected = currentCategoryFilter === cat;
@@ -276,7 +320,6 @@
             const color = isSelected ? '#ffffff' : '#2e7d32';
             const border = isSelected ? '#4caf50' : '#a5d6a7';
 
-            // 버튼 안의 글씨를 양쪽 끝으로 예쁘게 정렬(flex)
             summaryHTML += `<button onclick="setCategoryFilter('${cat}')" style="background: ${bg}; padding: 8px 10px; border-radius: 10px; border: 1px solid ${border}; font-size: 0.85em; color: ${color}; transition: 0.2s; margin:0; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; word-break: keep-all;">
                 <span>${cat}</span>
                 <strong>${sum.toLocaleString()}원</strong>
@@ -287,20 +330,18 @@
 
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
-            
             const catName = data.category || '기타';
             if (currentCategoryFilter && catName !== currentCategoryFilter) return;
 
             const amountNum = Number(data.amount) || 0;
             const listItem = document.createElement("div");
             listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
-            const amountStr = amountNum.toLocaleString();
             
             listItem.innerHTML = `
                 <div>
                     <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">${data.date}</div>
                     <div style="font-size: 1.05em; margin-bottom: 4px;">
-                        <strong>${data.merchant}</strong> - <strong style="color: #2e7d32;">${amountStr}원</strong>
+                        <strong>${data.merchant}</strong> - <strong style="color: #2e7d32;">${amountNum.toLocaleString()}원</strong>
                     </div>
                     <div style="font-size: 0.9em; color: #555;">[항목] ${catName}</div>
                 </div>
@@ -315,27 +356,77 @@
 
     async function deleteSingleData(id) {
         if (confirm("이 내역을 삭제하시겠습니까?")) {
-            try {
-                await db.collection("가계부결제내역").doc(id).delete();
-            } catch (error) {
-                alert("삭제 중 오류가 발생했습니다.");
-            }
+            await db.collection("가계부결제내역").doc(id).delete();
         }
     }
 
     async function resetList() {
         if (confirm("정말로 모든 결제 내역을 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
-            try {
-                const querySnapshot = await db.collection("가계부결제내역").get();
-                querySnapshot.forEach((doc) => {
-                    db.collection("가계부결제내역").doc(doc.id).delete();
-                });
-                alert("모든 내역이 깨끗하게 지워졌습니다.");
-            } catch (error) {
-                alert("삭제 권한이 없거나 오류가 발생했습니다.");
-            }
+            const querySnapshot = await db.collection("가계부결제내역").get();
+            querySnapshot.forEach((doc) => {
+                db.collection("가계부결제내역").doc(doc.id).delete();
+            });
+            alert("모든 내역이 깨끗하게 지워졌습니다.");
         }
     }
+
+    // ==========================================
+    // [자산] 관련 코드
+    // ==========================================
+    
+    // 자산 정보 저장하기
+    async function saveAssets() {
+        const bank = document.getElementById('asset-bank').value;
+        const invest = document.getElementById('asset-invest').value;
+        
+        try {
+            // '가계부자산' 서랍장에 '현황'이라는 이름으로 덮어쓰기 저장
+            await db.collection("가계부자산").doc("현황").set({
+                bank: Number(bank) || 0,
+                invest: Number(invest) || 0,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("자산이 안전하게 저장되었습니다!");
+        } catch (error) {
+            alert("자산 저장 실패! " + error.message);
+        }
+    }
+
+    // 실시간으로 자산 정보 불러와서 화면에 보여주기
+    db.collection("가계부자산").doc("현황").onSnapshot((doc) => {
+        const assetSummary = document.getElementById("asset-summary");
+        if (!assetSummary) return;
+        
+        if (doc.exists) {
+            const data = doc.data();
+            const bank = data.bank || 0;
+            const invest = data.invest || 0;
+            const total = bank + invest;
+            
+            // 입력칸에도 기존 금액 채워주기
+            document.getElementById('asset-bank').value = bank;
+            document.getElementById('asset-invest').value = invest;
+            
+            assetSummary.innerHTML = `
+                <div style="font-size: 1.1em; color: #555; margin-bottom: 5px;">현재 총 자산</div>
+                <div style="font-size: 2.2em; font-weight: bold; color: #1b5e20; margin-bottom: 25px;">${total.toLocaleString()}원</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+                        <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">🏦 은행</div>
+                        <div style="font-size: 1.2em; font-weight: bold; color: #2e7d32;">${bank.toLocaleString()}원</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+                        <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">📈 투자</div>
+                        <div style="font-size: 1.2em; font-weight: bold; color: #2e7d32;">${invest.toLocaleString()}원</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            assetSummary.innerHTML = "<div style='color: #666; font-size: 15px;'>아직 저장된 자산이 없습니다.<br>위에서 금액을 입력하고 저장해주세요!</div>";
+        }
+    });
+
 </script>
 </body>
 </html>
