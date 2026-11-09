@@ -91,7 +91,7 @@
 
     let editingId = null;
     let allPayments = []; 
-    let currentCategoryFilter = null; // 현재 선택된 항목 필터 기억하기
+    let currentCategoryFilter = null; 
 
     const today = new Date();
     document.getElementById('date').value = today.toISOString().substring(0, 10);
@@ -182,17 +182,15 @@
         }
     }
 
-    // 항목 버튼을 눌렀을 때 작동하는 함수
     function setCategoryFilter(category) {
         if (currentCategoryFilter === category) {
-            currentCategoryFilter = null; // 이미 선택된 걸 또 누르면 필터 해제
+            currentCategoryFilter = null; 
         } else {
             currentCategoryFilter = category;
         }
         renderList();
     }
 
-    // 엑셀 저장 시 항목 필터까지 반영
     function exportExcel() {
         try {
             const filterMonth = document.getElementById("filter-month").value;
@@ -250,7 +248,6 @@
         let totalAmount = 0;
         let categorySums = {};
         
-        // 1. 요약 상자에 들어갈 전체 통계 계산 (월 필터만 적용)
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
 
@@ -265,34 +262,33 @@
             }
         });
 
-        // 2. 통계 요약 상자 그리기 (항목별 클릭 버튼으로 생성)
         const displayMonth = filterMonth ? filterMonth.split('-')[1] + '월' : '전체';
-        let summaryHTML = `<div style="font-size: 1.2em; font-weight: bold; color: #1b5e20; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+        let summaryHTML = `<div style="font-size: 1.1em; font-weight: bold; color: #1b5e20; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
             <span>${displayMonth} 총 결제금액: ${totalAmount.toLocaleString()}원</span>
             ${currentCategoryFilter ? `<button onclick="setCategoryFilter(null)" style="background: #bdbdbd; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; margin:0;">필터 해제 ✕</button>` : ''}
         </div>`;
         
-        summaryHTML += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
+        // 한 줄에 2개씩 나오는 바둑판(Grid) 스타일 적용
+        summaryHTML += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">`;
         for (const [cat, sum] of Object.entries(categorySums)) {
-            // 선택된 항목은 진한 초록색, 안 선택된 항목은 흰색 바탕
             const isSelected = currentCategoryFilter === cat;
             const bg = isSelected ? '#4caf50' : '#ffffff';
             const color = isSelected ? '#ffffff' : '#2e7d32';
             const border = isSelected ? '#4caf50' : '#a5d6a7';
 
-            summaryHTML += `<button onclick="setCategoryFilter('${cat}')" style="background: ${bg}; padding: 6px 12px; border-radius: 15px; border: 1px solid ${border}; font-size: 0.95em; color: ${color}; transition: 0.2s; margin:0;">
-                ${cat}: <strong>${sum.toLocaleString()}원</strong>
+            // 버튼 안의 글씨를 양쪽 끝으로 예쁘게 정렬(flex)
+            summaryHTML += `<button onclick="setCategoryFilter('${cat}')" style="background: ${bg}; padding: 8px 10px; border-radius: 10px; border: 1px solid ${border}; font-size: 0.85em; color: ${color}; transition: 0.2s; margin:0; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; word-break: keep-all;">
+                <span>${cat}</span>
+                <strong>${sum.toLocaleString()}원</strong>
             </button>`;
         }
         summaryHTML += `</div>`;
         summaryBox.innerHTML = summaryHTML;
 
-        // 3. 결제 리스트 그리기 (월 필터 + 항목 필터 동시 적용)
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
             
             const catName = data.category || '기타';
-            // 현재 누른 항목이 있으면 그 항목만 통과시킴
             if (currentCategoryFilter && catName !== currentCategoryFilter) return;
 
             const amountNum = Number(data.amount) || 0;
@@ -322,4 +318,24 @@
             try {
                 await db.collection("가계부결제내역").doc(id).delete();
             } catch (error) {
-                alert("삭제 중 오류가 발생했습니다
+                alert("삭제 중 오류가 발생했습니다.");
+            }
+        }
+    }
+
+    async function resetList() {
+        if (confirm("정말로 모든 결제 내역을 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+            try {
+                const querySnapshot = await db.collection("가계부결제내역").get();
+                querySnapshot.forEach((doc) => {
+                    db.collection("가계부결제내역").doc(doc.id).delete();
+                });
+                alert("모든 내역이 깨끗하게 지워졌습니다.");
+            } catch (error) {
+                alert("삭제 권한이 없거나 오류가 발생했습니다.");
+            }
+        }
+    }
+</script>
+</body>
+</html>
