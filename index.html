@@ -16,11 +16,10 @@
     .excel-btn { background-color: #2e7d32; margin-bottom: 25px; }
     #app-screen { display: none; }
     
-    /* 탭 메뉴 */
     .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
     .tab-btn { margin: 0; border-radius: 0; width: 33.33%; font-size: 15px; padding: 12px 0; }
 
-    /* 달력 관련 디자인 (더보기 기능 유지) */
+    /* 달력 디자인 */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .calendar-day-header { text-align: center; font-weight: bold; background: #e8f5e9; padding: 8px 0; border-radius: 4px; font-size: 13px; color: #2e7d32; }
@@ -33,14 +32,14 @@
     .cal-transfer { background: #eeeeee; color: #616161; border-left: 2px solid #9e9e9e; }
     .sunday { color: #d32f2f !important; }
     .saturday { color: #1976d2 !important; }
-    
-    /* 더보기 버튼 디자인 */
-    .view-more-btn { 
-        text-align: center; font-size: 11px; font-weight: bold; color: #2e7d32; 
-        cursor: pointer; padding: 4px 0; margin-top: auto; 
-        background: #e8f5e9; border-radius: 4px; border: 1px solid #c8e6c9; 
-    }
+    .view-more-btn { text-align: center; font-size: 11px; font-weight: bold; color: #2e7d32; cursor: pointer; padding: 4px 0; margin-top: auto; background: #e8f5e9; border-radius: 4px; border: 1px solid #c8e6c9; }
     .view-more-btn:hover { background: #c8e6c9; }
+
+    /* 소유자 뱃지 스타일 */
+    .owner-badge-husband { background-color: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #90caf9;}
+    .owner-badge-wife { background-color: #fce4ec; color: #c2185b; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #f48fb1;}
+    .owner-badge-common { background-color: #f5f5f5; color: #616161; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #bdbdbd;}
+
 </style>
 <!-- 파이어베이스 연결 도구 -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -51,7 +50,6 @@
 <div class="container">
     <h1>우리집 가계부 🏡</h1>
 
-    <!-- 1. 로그인 화면 -->
     <div id="login-screen">
         <p style="text-align: center; color: #666; font-size: 14px;">가족 공용 암호를 입력해 주세요.</p>
         <input type="email" id="email" value="family@myhouse.com" style="margin-bottom: 10px; background-color: #eee;" readonly>
@@ -59,10 +57,8 @@
         <button onclick="login()" style="background-color: #4caf50;">열쇠로 열기</button>
     </div>
 
-    <!-- 2. 메인 앱 화면 -->
     <div id="app-screen">
         
-        <!-- 탭 네비게이션 -->
         <div class="tab-container">
             <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white;">📝 가계부</button>
             <button id="btn-calendar" class="tab-btn" onclick="showSection('calendar')" style="background-color: #e8f5e9; color: #2e7d32;">📅 달력</button>
@@ -163,21 +159,31 @@
         <div id="asset-section" style="display: none;">
             <h2 style="color: #1b5e20; text-align: center; margin-bottom: 25px;">현재 우리집 자산 기록하기</h2>
             
-            <div class="form-group">
-                <label>분류</label>
-                <select id="asset-type">
-                    <option value="bank">🏦 은행 (예금, 적금, 현금 등)</option>
-                    <option value="invest">📈 투자 (주식, 펀드, 코인 등)</option>
-                    <option value="credit">💳 신용카드 (카드대금 등)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>자산명 (어디에 있나요? / 어떤 카드인가요?)</label>
-                <input type="text" id="asset-name" placeholder="예: 우리은행, 삼성전자, 현대카드">
-            </div>
-            <div class="form-group">
-                <label>잔액 및 금액</label>
-                <input type="number" id="asset-amount" placeholder="예: 0">
+            <div style="background-color: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fff59d; margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="color: #f57f17;">👨‍👩‍👧 소유자 (누구의 자산인가요?)</label>
+                    <select id="asset-owner" style="border: 1px solid #fff59d; background: white;">
+                        <option value="husband">👨 남편</option>
+                        <option value="wife">👩 아내</option>
+                        <option value="common">🏡 공동/기타</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label>분류</label>
+                    <select id="asset-type">
+                        <option value="bank">🏦 은행 (예금, 적금, 현금 등)</option>
+                        <option value="invest">📈 투자 (주식, 펀드, 코인 등)</option>
+                        <option value="credit">💳 신용카드 (카드대금 등)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label>자산명 (어디에 있나요? / 어떤 카드인가요?)</label>
+                    <input type="text" id="asset-name" placeholder="예: 우리은행, 삼성전자, 현대카드">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>잔액 및 금액</label>
+                    <input type="number" id="asset-amount" placeholder="예: 0">
+                </div>
             </div>
 
             <div style="display: flex; gap: 10px;">
@@ -186,8 +192,29 @@
             </div>
 
             <div id="asset-summary" style="background-color: #e8f5e9; padding: 25px 15px; border-radius: 8px; margin-top: 30px; text-align: center; border: 2px solid #c8e6c9;"></div>
+            
             <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">자산 상세 목록</h2>
-            <div id="asset-list"></div>
+            
+            <!-- 남편/아내 자산 분리 컨테이너 -->
+            <div style="display: flex; gap: 15px; margin-top: 15px; align-items: flex-start;">
+                <!-- 남편 자산 영역 -->
+                <div style="flex: 1; background: #f8fbff; padding: 15px; border-radius: 8px; border: 1px solid #bbdefb;">
+                    <h3 style="margin-top: 0; color: #1565c0; font-size: 15px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 10px;">👨 남편 자산</h3>
+                    <div id="asset-list-husband"></div>
+                </div>
+                
+                <!-- 아내 자산 영역 -->
+                <div style="flex: 1; background: #fffcfd; padding: 15px; border-radius: 8px; border: 1px solid #f8bbd0;">
+                    <h3 style="margin-top: 0; color: #c2185b; font-size: 15px; text-align: center; border-bottom: 1px dashed #f48fb1; padding-bottom: 10px;">👩 아내 자산</h3>
+                    <div id="asset-list-wife"></div>
+                </div>
+            </div>
+            
+            <!-- 공동 자산 영역 -->
+            <div style="margin-top: 15px; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <h3 style="margin-top: 0; color: #616161; font-size: 15px; text-align: center; border-bottom: 1px dashed #bdbdbd; padding-bottom: 10px;">🏡 공동 및 기타 자산</h3>
+                <div id="asset-list-common"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -252,7 +279,7 @@
     });
 
     // ==========================================
-    // [달력 렌더링 로직 - 더보기 기능 유지]
+    // [달력 렌더링 로직]
     // ==========================================
     function changeCalendarMonth(offset) {
         currentCalMonth += offset;
@@ -288,7 +315,6 @@
         const calBody = document.getElementById("calendar-body");
         if(!calBody) return;
         calBody.innerHTML = "";
-
         const monthTitle = document.getElementById("calendar-month-title");
         monthTitle.innerText = `${currentCalYear}년 ${currentCalMonth + 1}월`;
 
@@ -324,7 +350,6 @@
             
             if(paymentsByDate[dateStr]) {
                 const items = paymentsByDate[dateStr];
-                
                 const visibleItems = items.slice(0, 2);
                 const hiddenItems = items.slice(2);
                 
@@ -333,16 +358,13 @@
                 if(hiddenItems.length > 0) {
                     const hiddenId = `hidden-items-${dateStr}`;
                     const btnId = `btn-more-${dateStr}`;
-                    
                     let hiddenHtml = `<div id="${hiddenId}" style="display:none; margin-top: 3px;">`;
                     hiddenItems.forEach(item => { hiddenHtml += createCalItemHtml(item); });
                     hiddenHtml += `</div>`;
-                    
                     cellHtml += hiddenHtml;
                     cellHtml += `<div id="${btnId}" class="view-more-btn" onclick="toggleMore('${hiddenId}', '${btnId}', ${hiddenItems.length})">+${hiddenItems.length} 더보기 ▾</div>`;
                 }
             }
-
             cell.innerHTML = cellHtml;
             calBody.appendChild(cell);
         }
@@ -463,10 +485,17 @@
             const fromAsset = allAssets.find(a => a.id === route.fromId);
             const toAsset = allAssets.find(a => a.id === route.toId);
             if(!fromAsset || !toAsset) return; 
+            
+            // 소유자 뱃지 추가
+            const fromBadge = getOwnerBadgeHTML(fromAsset.owner);
+            const toBadge = getOwnerBadgeHTML(toAsset.owner);
+
             const btn = document.createElement('div');
             btn.style = "background: #e3f2fd; color: #1565c0; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border: 1px solid #90caf9;";
             btn.innerHTML = `
-                <span onclick="applyRoute('${route.fromId}', '${route.toId}', '${route.memo}')" style="font-weight: bold;">⭐ ${fromAsset.name} ➔ ${toAsset.name}</span>
+                <span onclick="applyRoute('${route.fromId}', '${route.toId}', '${route.memo}')" style="font-weight: bold; display: flex; align-items: center;">
+                    ⭐ ${fromBadge}${fromAsset.name} ➔ ${toBadge}${toAsset.name}
+                </span>
                 <span onclick="deleteRoute('${route.id}')" style="color: #d32f2f; font-weight: bold; padding-left: 5px; border-left: 1px solid #90caf9;">✕</span>
             `;
             container.appendChild(btn);
@@ -500,8 +529,12 @@
         try {
             await db.collection("가계부자산목록").doc(fromId).update({ amount: fromAsset.amount - amount });
             await db.collection("가계부자산목록").doc(toId).update({ amount: toAsset.amount + amount });
+            
+            const fromPrefix = fromAsset.owner === 'husband' ? '남편' : (fromAsset.owner === 'wife' ? '아내' : '공동');
+            const toPrefix = toAsset.owner === 'husband' ? '남편' : (toAsset.owner === 'wife' ? '아내' : '공동');
+
             await db.collection("가계부결제내역").add({
-                date: document.getElementById('date').value, merchant: `${fromAsset.name} ➔ ${toAsset.name}`, amount: amount, category: "자산이체", type: 'transfer', fromAssetId: fromId, toAssetId: toId, memo: memoStr, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                date: document.getElementById('date').value, merchant: `[${fromPrefix}]${fromAsset.name} ➔ [${toPrefix}]${toAsset.name}`, amount: amount, category: "자산이체", type: 'transfer', fromAssetId: fromId, toAssetId: toId, memo: memoStr, timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             alert(`✅ 이체 내역이 정상적으로 저장되었습니다!`);
             document.getElementById('transfer-amount').value = '';
@@ -611,8 +644,10 @@
             const memoHtml = data.memo ? `<div style="font-size: 0.85em; color: #757575; margin-top: 5px;">📝 메모: ${data.memo}</div>` : '';
             let linkedAssetStr = '';
             if (data.linkedAssetId) {
-                const linkedAssetName = allAssets.find(a => a.id === data.linkedAssetId)?.name || '알 수 없음';
-                linkedAssetStr = ` (🔗 ${linkedAssetName})`;
+                const targetAsset = allAssets.find(a => a.id === data.linkedAssetId);
+                const linkedAssetName = targetAsset?.name || '알 수 없음';
+                const ownerBadge = targetAsset ? getOwnerBadgeHTML(targetAsset.owner) : '';
+                linkedAssetStr = ` (🔗 ${ownerBadge}${linkedAssetName})`;
             }
 
             const listItem = document.createElement("div");
@@ -621,7 +656,7 @@
                 <div style="flex: 1;">
                     <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">${data.date} ${typeTag}</div>
                     <div style="font-size: 1.05em; margin-bottom: 4px;"><strong>${data.merchant}</strong> - ${amountStr}</div>
-                    <div style="font-size: 0.9em; color: #555;">[항목] ${catName}${linkedAssetStr}</div>
+                    <div style="font-size: 0.9em; color: #555; display: flex; align-items: center;">[항목] ${catName}${linkedAssetStr}</div>
                     ${memoHtml}
                 </div>
                 <div style="display: flex; gap: 5px; flex-direction: column;">
@@ -660,37 +695,95 @@
     }
 
     // ==========================================
-    // [자산] 관련 코드
+    // [자산] 관련 코드 (남편/아내 분리 로직 적용)
     // ==========================================
-    function editAssetData(id, type, name, amount) {
-        editingAssetId = id; document.getElementById('asset-type').value = type; document.getElementById('asset-name').value = name; document.getElementById('asset-amount').value = amount;
-        document.getElementById('saveAssetBtn').innerText = "수정 완료하기"; document.getElementById('saveAssetBtn').style.backgroundColor = "#f57c00"; document.getElementById('cancelAssetEditBtn').style.display = "block"; window.scrollTo(0, 0);
+    function editAssetData(id, owner, type, name, amount) {
+        editingAssetId = id; 
+        document.getElementById('asset-owner').value = owner || 'common';
+        document.getElementById('asset-type').value = type; 
+        document.getElementById('asset-name').value = name; 
+        document.getElementById('asset-amount').value = amount;
+        
+        document.getElementById('saveAssetBtn').innerText = "수정 완료하기"; 
+        document.getElementById('saveAssetBtn').style.backgroundColor = "#f57c00"; 
+        document.getElementById('cancelAssetEditBtn').style.display = "block"; 
+        window.scrollTo(0, 0);
     }
+    
     function cancelAssetEdit() {
-        editingAssetId = null; document.getElementById('saveAssetBtn').innerText = "자산 추가하기"; document.getElementById('saveAssetBtn').style.backgroundColor = "#1b5e20"; document.getElementById('cancelAssetEditBtn').style.display = "none";
-        document.getElementById('asset-name').value = ''; document.getElementById('asset-amount').value = '';
+        editingAssetId = null; 
+        document.getElementById('saveAssetBtn').innerText = "자산 추가하기"; 
+        document.getElementById('saveAssetBtn').style.backgroundColor = "#1b5e20"; 
+        document.getElementById('cancelAssetEditBtn').style.display = "none";
+        
+        document.getElementById('asset-owner').value = 'husband';
+        document.getElementById('asset-name').value = ''; 
+        document.getElementById('asset-amount').value = '';
     }
+    
     async function saveAssetData() {
-        const type = document.getElementById('asset-type').value; const name = document.getElementById('asset-name').value; const amount = document.getElementById('asset-amount').value;
+        const owner = document.getElementById('asset-owner').value;
+        const type = document.getElementById('asset-type').value; 
+        const name = document.getElementById('asset-name').value; 
+        const amount = document.getElementById('asset-amount').value;
+        
         if(!name || !amount) { alert("자산명과 금액을 적어주세요!"); return; }
+        
         try {
-            if (editingAssetId) { await db.collection("가계부자산목록").doc(editingAssetId).update({ type: type, name: name, amount: Number(amount) }); alert("자산이 수정되었습니다!"); cancelAssetEdit(); } 
-            else { await db.collection("가계부자산목록").add({ type: type, name: name, amount: Number(amount), isFavorite: false, timestamp: Date.now() }); alert("새로운 자산이 추가되었습니다!"); document.getElementById('asset-name').value = ''; document.getElementById('asset-amount').value = ''; }
+            if (editingAssetId) { 
+                await db.collection("가계부자산목록").doc(editingAssetId).update({ 
+                    owner: owner, type: type, name: name, amount: Number(amount) 
+                }); 
+                alert("자산이 수정되었습니다!"); 
+                cancelAssetEdit(); 
+            } 
+            else { 
+                await db.collection("가계부자산목록").add({ 
+                    owner: owner, type: type, name: name, amount: Number(amount), isFavorite: false, timestamp: Date.now() 
+                }); 
+                alert("새로운 자산이 추가되었습니다!"); 
+                document.getElementById('asset-name').value = ''; 
+                document.getElementById('asset-amount').value = ''; 
+            }
         } catch (error) { alert("자산 저장 실패! " + error.message); }
     }
+    
     async function deleteAssetData(id) { if (confirm("이 자산을 삭제하시겠습니까?")) { await db.collection("가계부자산목록").doc(id).delete(); } }
     async function toggleFavorite(id, currentStatus) { try { await db.collection("가계부자산목록").doc(id).update({ isFavorite: !currentStatus }); } catch(error) { alert("즐겨찾기 설정 오류"); } }
+
+    function getOwnerBadgeHTML(owner) {
+        if(owner === 'husband') return `<span class="owner-badge-husband">남편</span>`;
+        if(owner === 'wife') return `<span class="owner-badge-wife">아내</span>`;
+        return `<span class="owner-badge-common">공동</span>`;
+    }
 
     function updateAssetDropdowns() {
         const favAssets = allAssets.filter(a => a.isFavorite); const normalAssets = allAssets.filter(a => !a.isFavorite);
         let groupedHtml = '<option value="">선택 안 함 (가계부 내역만 기록)</option>';
-        if(favAssets.length > 0) { groupedHtml += '<optgroup label="⭐ 즐겨찾는 자산">'; favAssets.forEach(asset => { groupedHtml += `<option value="${asset.id}">${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; }); groupedHtml += '</optgroup>'; }
-        if(normalAssets.length > 0) { groupedHtml += '<optgroup label="일반 자산">'; normalAssets.forEach(asset => { groupedHtml += `<option value="${asset.id}">${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; }); groupedHtml += '</optgroup>'; }
+        if(favAssets.length > 0) { 
+            groupedHtml += '<optgroup label="⭐ 즐겨찾는 자산">'; 
+            favAssets.forEach(asset => { 
+                const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ');
+                groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; 
+            }); 
+            groupedHtml += '</optgroup>'; 
+        }
+        if(normalAssets.length > 0) { 
+            groupedHtml += '<optgroup label="일반 자산">'; 
+            normalAssets.forEach(asset => { 
+                const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ');
+                groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; 
+            }); 
+            groupedHtml += '</optgroup>'; 
+        }
         const linkedSelect = document.getElementById('linked-asset');
         if(linkedSelect) { const prevLinked = linkedSelect.value; linkedSelect.innerHTML = groupedHtml; if (prevLinked && allAssets.find(a => a.id === prevLinked)) linkedSelect.value = prevLinked; }
 
         let flatHtml = '<option value="">선택하세요</option>';
-        allAssets.forEach(asset => { flatHtml += `<option value="${asset.id}">${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; });
+        allAssets.forEach(asset => { 
+            const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ');
+            flatHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; 
+        });
         const fromSelect = document.getElementById('transfer-from'); const toSelect = document.getElementById('transfer-to');
         if(fromSelect) { const prevFrom = fromSelect.value; fromSelect.innerHTML = flatHtml; if (prevFrom && allAssets.find(a => a.id === prevFrom)) fromSelect.value = prevFrom; }
         if(toSelect) { const prevTo = toSelect.value; toSelect.innerHTML = flatHtml; if (prevTo && allAssets.find(a => a.id === prevTo)) toSelect.value = prevTo; }
@@ -699,40 +792,80 @@
 
     db.collection("가계부자산목록").orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
         allAssets = []; let bankTotal = 0; let investTotal = 0; let creditTotal = 0;
+        
+        // 소유자별 합계 계산을 위한 변수
+        let husbandTotal = 0; let wifeTotal = 0; let commonTotal = 0;
+
         querySnapshot.forEach((doc) => {
             const data = doc.data(); const amt = Number(data.amount) || 0; const isFav = data.isFavorite === true; 
-            allAssets.push({ id: doc.id, type: data.type, name: data.name, amount: amt, isFavorite: isFav });
+            const owner = data.owner || 'common'; // 기존 데이터 호환을 위해 기본값 세팅
+            
+            allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav });
+            
             if (data.type === 'bank') bankTotal += amt; else if (data.type === 'invest') investTotal += amt; else if (data.type === 'credit') creditTotal += amt;
+            
+            if (owner === 'husband') husbandTotal += amt;
+            else if (owner === 'wife') wifeTotal += amt;
+            else commonTotal += amt;
         });
 
         updateAssetDropdowns();
         renderList(); 
 
-        const assetSummary = document.getElementById("asset-summary"); const assetList = document.getElementById("asset-list");
-        if (!assetSummary || !assetList) return;
+        const assetSummary = document.getElementById("asset-summary"); 
+        const listHusband = document.getElementById("asset-list-husband");
+        const listWife = document.getElementById("asset-list-wife");
+        const listCommon = document.getElementById("asset-list-common");
         
-        assetList.innerHTML = "";
+        if (!assetSummary || !listHusband) return;
+        
+        listHusband.innerHTML = "";
+        listWife.innerHTML = "";
+        listCommon.innerHTML = "";
+
         allAssets.forEach((data) => {
             let typeEmoji = '🏦 은행'; if (data.type === 'invest') typeEmoji = '📈 투자'; else if (data.type === 'credit') typeEmoji = '💳 신용카드';
             const amountColor = data.amount < 0 ? '#d32f2f' : (data.type === 'credit' ? '#d32f2f' : '#2e7d32');
-            const listItem = document.createElement("div"); listItem.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
+            
+            const listItem = document.createElement("div"); 
+            listItem.style = "padding: 10px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;";
+            
             listItem.innerHTML = `
-                <div><div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">[${typeEmoji}]</div><div style="font-size: 1.05em; margin-bottom: 4px;"><strong>${data.name}</strong></div><div style="font-size: 1em; font-weight: bold; color: ${amountColor};">${data.amount.toLocaleString()}원</div></div>
-                <div style="display: flex; gap: 5px; flex-direction: column;">
-                    <button onclick="toggleFavorite('${data.id}', ${data.isFavorite})" style="width: auto; padding: 6px 12px; background-color: ${data.isFavorite ? '#ffb300' : '#e0e0e0'}; font-size: 12px; margin-top: 0; color: ${data.isFavorite ? 'white' : '#757575'}; border: none; border-radius: 4px;">${data.isFavorite ? '⭐ 해제' : '☆ 즐겨찾기'}</button>
-                    <div style="display: flex; gap: 5px;">
-                        <button onclick="editAssetData('${data.id}', '${data.type}', \`${data.name}\`, ${data.amount})" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px; flex: 1;">수정</button>
-                        <button onclick="deleteAssetData('${data.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px; flex: 1;">삭제</button>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-size: 0.8em; color: #888; margin-bottom: 2px;">[${typeEmoji}]</div>
+                        <div style="font-size: 1em; margin-bottom: 2px;"><strong>${data.name}</strong></div>
+                        <div style="font-size: 0.95em; font-weight: bold; color: ${amountColor};">${data.amount.toLocaleString()}원</div>
                     </div>
+                    <button onclick="toggleFavorite('${data.id}', ${data.isFavorite})" style="width: auto; padding: 4px 8px; background-color: ${data.isFavorite ? '#ffb300' : 'transparent'}; font-size: 11px; margin-top: 0; color: ${data.isFavorite ? 'white' : '#bdbdbd'}; border: 1px solid ${data.isFavorite ? '#ffb300' : '#e0e0e0'}; border-radius: 4px; cursor: pointer;">${data.isFavorite ? '⭐ 해제' : '☆ 즐겨찾기'}</button>
+                </div>
+                <div style="display: flex; gap: 5px; width: 100%;">
+                    <button onclick="editAssetData('${data.id}', '${data.owner}', '${data.type}', \`${data.name}\`, ${data.amount})" style="padding: 5px; background-color: #f57c00; font-size: 11px; color: white; border: none; border-radius: 4px; flex: 1;">수정</button>
+                    <button onclick="deleteAssetData('${data.id}')" style="padding: 5px; background-color: #d32f2f; font-size: 11px; color: white; border: none; border-radius: 4px; flex: 1;">삭제</button>
                 </div>
             `;
-            assetList.appendChild(listItem);
+            
+            // 소유자에 따라 다른 리스트에 어펜드
+            if(data.owner === 'husband') listHusband.appendChild(listItem);
+            else if(data.owner === 'wife') listWife.appendChild(listItem);
+            else listCommon.appendChild(listItem);
         });
+
+        // 빈 목록 처리
+        if(listHusband.innerHTML === "") listHusband.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
+        if(listWife.innerHTML === "") listWife.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
+        if(listCommon.innerHTML === "") listCommon.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
 
         const total = bankTotal + investTotal + creditTotal;
         assetSummary.innerHTML = `
             <div style="font-size: 1.1em; color: #555; margin-bottom: 5px;">현재 총 자산</div>
-            <div style="font-size: 2.2em; font-weight: bold; color: #1b5e20; margin-bottom: 25px;">${total.toLocaleString()}원</div>
+            <div style="font-size: 2.2em; font-weight: bold; color: #1b5e20; margin-bottom: 20px;">${total.toLocaleString()}원</div>
+            
+            <div style="display: flex; justify-content: space-around; margin-bottom: 20px; font-size: 13px;">
+                <span style="color: #1565c0;">👨 남편: <strong>${husbandTotal.toLocaleString()}</strong>원</span>
+                <span style="color: #c2185b;">👩 아내: <strong>${wifeTotal.toLocaleString()}</strong>원</span>
+            </div>
+
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                 <div style="background: white; padding: 12px 8px; border-radius: 8px; border: 1px solid #c8e6c9;">
                     <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">🏦 은행 잔고</div><div style="font-size: 1.05em; font-weight: bold; color: ${bankTotal < 0 ? '#d32f2f' : '#2e7d32'}; word-break: break-all;">${bankTotal.toLocaleString()}원</div>
