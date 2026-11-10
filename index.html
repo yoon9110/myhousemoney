@@ -17,19 +17,10 @@
     #app-screen { display: none; }
     
     /* 탭 메뉴 */
-    .tab-container { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
+    .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
     .tab-btn { margin: 0; border-radius: 0; width: 33.33%; font-size: 15px; padding: 12px 0; }
 
-    /* 파트별 윤곽선 (새로 추가됨) */
-    .section-wrapper {
-        border: 3px solid #81c784; 
-        border-radius: 12px; 
-        padding: 20px; 
-        background-color: #ffffff; 
-        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.08);
-    }
-
-    /* 달력 관련 디자인 */
+    /* 달력 관련 디자인 (더보기 기능 유지) */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .calendar-day-header { text-align: center; font-weight: bold; background: #e8f5e9; padding: 8px 0; border-radius: 4px; font-size: 13px; color: #2e7d32; }
@@ -79,10 +70,10 @@
         </div>
 
         <!-- ================= [가계부 섹션] ================= -->
-        <div id="ledger-section" class="section-wrapper">
+        <div id="ledger-section">
             <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
             
-            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 25px; border: 1px solid #90caf9;">
+            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 25px; margin-bottom: 25px; border: 1px solid #90caf9;">
                 <h3 style="margin-top: 0; color: #1565c0; font-size: 16px; margin-bottom: 15px;">🔄 자산 이체 (카드 대금 결제)</h3>
                 <div id="favorite-routes-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;"></div>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
@@ -149,7 +140,7 @@
         </div>
 
         <!-- ================= [지출 달력 섹션] ================= -->
-        <div id="calendar-section" class="section-wrapper" style="display: none;">
+        <div id="calendar-section" style="display: none;">
             <div class="calendar-header">
                 <button onclick="changeCalendarMonth(-1)" style="width: auto; padding: 8px 15px; background: #4caf50;">◀ 이전 달</button>
                 <h2 id="calendar-month-title" style="margin: 0; color: #2e7d32; font-size: 20px;">2026년 11월</h2>
@@ -169,7 +160,7 @@
         </div>
 
         <!-- ================= [자산 섹션] ================= -->
-        <div id="asset-section" class="section-wrapper" style="display: none;">
+        <div id="asset-section" style="display: none;">
             <h2 style="color: #1b5e20; text-align: center; margin-bottom: 25px;">현재 우리집 자산 기록하기</h2>
             
             <div class="form-group">
@@ -261,7 +252,7 @@
     });
 
     // ==========================================
-    // [달력 렌더링 로직 - 더보기 기능 추가]
+    // [달력 렌더링 로직 - 더보기 기능 유지]
     // ==========================================
     function changeCalendarMonth(offset) {
         currentCalMonth += offset;
@@ -281,7 +272,6 @@
         </div>`;
     }
 
-    // 더보기 토글 기능
     window.toggleMore = function(hiddenId, btnId, count) {
         const hiddenDiv = document.getElementById(hiddenId);
         const btn = document.getElementById(btnId);
@@ -335,7 +325,6 @@
             if(paymentsByDate[dateStr]) {
                 const items = paymentsByDate[dateStr];
                 
-                // 내역이 3개 이상이면 처음 2개만 보여주고 나머지는 숨김 처리
                 const visibleItems = items.slice(0, 2);
                 const hiddenItems = items.slice(2);
                 
