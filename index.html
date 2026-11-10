@@ -16,15 +16,24 @@
     .excel-btn { background-color: #2e7d32; margin-bottom: 25px; }
     #app-screen { display: none; }
     
-    /* 탭 메뉴 세 칸으로 나누기 */
-    .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
+    /* 탭 메뉴 */
+    .tab-container { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
     .tab-btn { margin: 0; border-radius: 0; width: 33.33%; font-size: 15px; padding: 12px 0; }
+
+    /* 파트별 윤곽선 (새로 추가됨) */
+    .section-wrapper {
+        border: 3px solid #81c784; 
+        border-radius: 12px; 
+        padding: 20px; 
+        background-color: #ffffff; 
+        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.08);
+    }
 
     /* 달력 관련 디자인 */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .calendar-day-header { text-align: center; font-weight: bold; background: #e8f5e9; padding: 8px 0; border-radius: 4px; font-size: 13px; color: #2e7d32; }
-    .calendar-cell { min-height: 80px; border: 1px solid #c8e6c9; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; background: white; }
+    .calendar-cell { min-height: 105px; border: 1px solid #c8e6c9; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; background: white; }
     .calendar-cell.empty { background: #f9f9f9; border: 1px dashed #e0e0e0; }
     .calendar-date { font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #555; }
     .calendar-item { padding: 4px; border-radius: 4px; margin-bottom: 3px; font-size: 10px; line-height: 1.2; overflow: hidden; word-break: break-all; }
@@ -33,6 +42,14 @@
     .cal-transfer { background: #eeeeee; color: #616161; border-left: 2px solid #9e9e9e; }
     .sunday { color: #d32f2f !important; }
     .saturday { color: #1976d2 !important; }
+    
+    /* 더보기 버튼 디자인 */
+    .view-more-btn { 
+        text-align: center; font-size: 11px; font-weight: bold; color: #2e7d32; 
+        cursor: pointer; padding: 4px 0; margin-top: auto; 
+        background: #e8f5e9; border-radius: 4px; border: 1px solid #c8e6c9; 
+    }
+    .view-more-btn:hover { background: #c8e6c9; }
 </style>
 <!-- 파이어베이스 연결 도구 -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -62,10 +79,10 @@
         </div>
 
         <!-- ================= [가계부 섹션] ================= -->
-        <div id="ledger-section">
+        <div id="ledger-section" class="section-wrapper">
             <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
             
-            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 25px; margin-bottom: 25px; border: 1px solid #90caf9;">
+            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 25px; border: 1px solid #90caf9;">
                 <h3 style="margin-top: 0; color: #1565c0; font-size: 16px; margin-bottom: 15px;">🔄 자산 이체 (카드 대금 결제)</h3>
                 <div id="favorite-routes-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;"></div>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
@@ -132,7 +149,7 @@
         </div>
 
         <!-- ================= [지출 달력 섹션] ================= -->
-        <div id="calendar-section" style="display: none;">
+        <div id="calendar-section" class="section-wrapper" style="display: none;">
             <div class="calendar-header">
                 <button onclick="changeCalendarMonth(-1)" style="width: auto; padding: 8px 15px; background: #4caf50;">◀ 이전 달</button>
                 <h2 id="calendar-month-title" style="margin: 0; color: #2e7d32; font-size: 20px;">2026년 11월</h2>
@@ -152,7 +169,7 @@
         </div>
 
         <!-- ================= [자산 섹션] ================= -->
-        <div id="asset-section" style="display: none;">
+        <div id="asset-section" class="section-wrapper" style="display: none;">
             <h2 style="color: #1b5e20; text-align: center; margin-bottom: 25px;">현재 우리집 자산 기록하기</h2>
             
             <div class="form-group">
@@ -205,7 +222,6 @@
     let allAssets = []; 
     let favoriteRoutes = []; 
 
-    // 달력용 상태 변수
     let currentCalYear = new Date().getFullYear();
     let currentCalMonth = new Date().getMonth();
 
@@ -214,21 +230,17 @@
     document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
 
     function showSection(section) {
-        // 모든 탭 디자인 초기화
         const tabs = ['ledger', 'calendar', 'asset'];
         tabs.forEach(t => {
             const btn = document.getElementById('btn-' + t);
             if (btn) { btn.style.backgroundColor = '#e8f5e9'; btn.style.color = '#2e7d32'; }
             document.getElementById(t + '-section').style.display = 'none';
         });
-        // 선택한 탭 활성화
         const activeBtn = document.getElementById('btn-' + section);
         if (activeBtn) { activeBtn.style.backgroundColor = '#2e7d32'; activeBtn.style.color = 'white'; }
         document.getElementById(section + '-section').style.display = 'block';
 
-        if (section === 'calendar') {
-            renderCalendar(); // 달력 탭을 누르면 다시 그리기
-        }
+        if (section === 'calendar') renderCalendar();
     }
 
     function login() {
@@ -249,7 +261,7 @@
     });
 
     // ==========================================
-    // [달력 렌더링 로직]
+    // [달력 렌더링 로직 - 더보기 기능 추가]
     // ==========================================
     function changeCalendarMonth(offset) {
         currentCalMonth += offset;
@@ -257,6 +269,30 @@
         else if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
         renderCalendar();
     }
+
+    function createCalItemHtml(item) {
+        let cls = ''; let prefix = '';
+        if(item.type === 'income') { cls = 'cal-income'; prefix = '+'; }
+        else if(item.type === 'expense') { cls = 'cal-expense'; prefix = '-'; }
+        else { cls = 'cal-transfer'; prefix = '🔄'; }
+        return `<div class="calendar-item ${cls}">
+            <div style="font-weight:bold; margin-bottom:2px;">${item.merchant}</div>
+            <div>${prefix}${Number(item.amount).toLocaleString()}원</div>
+        </div>`;
+    }
+
+    // 더보기 토글 기능
+    window.toggleMore = function(hiddenId, btnId, count) {
+        const hiddenDiv = document.getElementById(hiddenId);
+        const btn = document.getElementById(btnId);
+        if(hiddenDiv.style.display === 'none') {
+            hiddenDiv.style.display = 'block';
+            btn.innerText = '접기 ▴';
+        } else {
+            hiddenDiv.style.display = 'none';
+            btn.innerText = '+' + count + ' 더보기 ▾';
+        }
+    };
 
     function renderCalendar() {
         const calBody = document.getElementById("calendar-body");
@@ -266,24 +302,21 @@
         const monthTitle = document.getElementById("calendar-month-title");
         monthTitle.innerText = `${currentCalYear}년 ${currentCalMonth + 1}월`;
 
-        const firstDay = new Date(currentCalYear, currentCalMonth, 1).getDay(); // 이번달 1일 요일
-        const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate(); // 이번달 총 일수
+        const firstDay = new Date(currentCalYear, currentCalMonth, 1).getDay(); 
+        const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate(); 
 
-        // 날짜별로 내역 묶어두기 (예: "2026-11-03": [내역1, 내역2])
         const paymentsByDate = {};
         allPayments.forEach(p => {
             if(!paymentsByDate[p.date]) paymentsByDate[p.date] = [];
             paymentsByDate[p.date].push(p);
         });
 
-        // 빈 칸 렌더링 (1일 이전)
         for(let i=0; i<firstDay; i++) {
             const cell = document.createElement('div');
             cell.className = 'calendar-cell empty';
             calBody.appendChild(cell);
         }
 
-        // 실제 날짜 렌더링
         for(let d=1; d<=daysInMonth; d++) {
             const cell = document.createElement('div');
             cell.className = 'calendar-cell';
@@ -293,28 +326,32 @@
             if(dayOfWeek === 0) dayColor = 'sunday';
             if(dayOfWeek === 6) dayColor = 'saturday';
 
-            // YYYY-MM-DD 포맷 맞추기 (데이터베이스 포맷과 동일해야 함)
             const mm = String(currentCalMonth + 1).padStart(2, '0');
             const dd = String(d).padStart(2, '0');
             const dateStr = `${currentCalYear}-${mm}-${dd}`;
             
             let cellHtml = `<div class="calendar-date ${dayColor}">${d}</div>`;
             
-            // 해당 날짜에 결제 내역이 있으면 박스 렌더링
             if(paymentsByDate[dateStr]) {
-                paymentsByDate[dateStr].forEach(item => {
-                    let cls = ''; let prefix = '';
-                    if(item.type === 'income') { cls = 'cal-income'; prefix = '+'; }
-                    else if(item.type === 'expense') { cls = 'cal-expense'; prefix = '-'; }
-                    else { cls = 'cal-transfer'; prefix = '🔄'; }
-
-                    // 금액 단위 자르기 방지를 위해 flex 박스 디자인
-                    cellHtml += `
-                        <div class="calendar-item ${cls}">
-                            <div style="font-weight:bold; margin-bottom:2px;">${item.merchant}</div>
-                            <div>${prefix}${Number(item.amount).toLocaleString()}원</div>
-                        </div>`;
-                });
+                const items = paymentsByDate[dateStr];
+                
+                // 내역이 3개 이상이면 처음 2개만 보여주고 나머지는 숨김 처리
+                const visibleItems = items.slice(0, 2);
+                const hiddenItems = items.slice(2);
+                
+                visibleItems.forEach(item => { cellHtml += createCalItemHtml(item); });
+                
+                if(hiddenItems.length > 0) {
+                    const hiddenId = `hidden-items-${dateStr}`;
+                    const btnId = `btn-more-${dateStr}`;
+                    
+                    let hiddenHtml = `<div id="${hiddenId}" style="display:none; margin-top: 3px;">`;
+                    hiddenItems.forEach(item => { hiddenHtml += createCalItemHtml(item); });
+                    hiddenHtml += `</div>`;
+                    
+                    cellHtml += hiddenHtml;
+                    cellHtml += `<div id="${btnId}" class="view-more-btn" onclick="toggleMore('${hiddenId}', '${btnId}', ${hiddenItems.length})">+${hiddenItems.length} 더보기 ▾</div>`;
+                }
             }
 
             cell.innerHTML = cellHtml;
@@ -333,7 +370,6 @@
         document.getElementById('category').value = category;
         if(linkedAssetId) document.getElementById('linked-asset').value = linkedAssetId;
         else document.getElementById('linked-asset').value = '';
-
         document.getElementById('input-buttons').style.display = "none";
         document.getElementById('edit-buttons').style.display = "flex";
         window.scrollTo(0, 0);
@@ -343,7 +379,6 @@
         editingId = null;
         document.getElementById('input-buttons').style.display = "flex";
         document.getElementById('edit-buttons').style.display = "none";
-        
         document.getElementById('merchant').value = '';
         document.getElementById('amount').value = '';
         document.getElementById('category').value = '';
@@ -365,30 +400,25 @@
             if (editingId) {
                 const oldDoc = await db.collection("가계부결제내역").doc(editingId).get();
                 const oldData = oldDoc.data();
-                
                 if (oldData.linkedAssetId) {
                     const oldAsset = allAssets.find(a => a.id === oldData.linkedAssetId);
                     if (oldAsset) {
                         let restoredAmt = oldAsset.amount;
                         if (oldData.type === 'income') restoredAmt -= Number(oldData.amount);
                         else if (oldData.type === 'expense') restoredAmt += Number(oldData.amount);
-                        
                         oldAsset.amount = restoredAmt; 
                         await db.collection("가계부자산목록").doc(oldData.linkedAssetId).update({ amount: restoredAmt });
                     }
                 }
-                
                 if (linkedAssetId) {
                     const newAsset = allAssets.find(a => a.id === linkedAssetId);
                     if (newAsset) {
                         let newAmt = newAsset.amount;
                         if (type === 'income') newAmt += amountNum;
                         else if (type === 'expense') newAmt -= amountNum;
-                        
                         await db.collection("가계부자산목록").doc(linkedAssetId).update({ amount: newAmt });
                     }
                 }
-
                 await db.collection("가계부결제내역").doc(editingId).update({
                     date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId
                 });
@@ -404,12 +434,10 @@
                         await db.collection("가계부자산목록").doc(linkedAssetId).update({ amount: newAmount });
                     }
                 }
-
                 await db.collection("가계부결제내역").add({
                     date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                
                 alert(linkedAssetId ? "자산 잔액이 자동으로 변경되고 내역이 저장되었습니다!" : "내역이 저장되었습니다!");
                 cancelEdit();
             }
@@ -531,7 +559,7 @@
         allPayments = [];
         querySnapshot.forEach((doc) => { allPayments.push({ id: doc.id, ...doc.data() }); });
         renderList();
-        renderCalendar(); // 결제 내역 갱신될 때 달력도 실시간으로 다시 그리기
+        renderCalendar(); 
     });
 
     function renderList() {
