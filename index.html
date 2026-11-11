@@ -60,6 +60,11 @@
                 <button onclick="login()" style="flex: 1; background-color: #4caf50;">로그인</button>
                 <button onclick="signup()" style="flex: 1; background-color: #ff9800;">새로 회원가입</button>
             </div>
+            
+            <!-- 비밀번호 찾기 버튼 -->
+            <div style="margin-top: 15px; text-align: center;">
+                <span onclick="resetPassword()" style="font-size: 13px; color: #1565c0; cursor: pointer; text-decoration: underline; font-weight: bold;">비밀번호를 잊으셨나요?</span>
+            </div>
         </div>
     </div>
 
@@ -277,6 +282,23 @@
     }
 
     // ==========================================
+    // [비밀번호 찾기 기능]
+    // ==========================================
+    function resetPassword() {
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert("비밀번호를 재설정할 이메일 주소를 입력칸에 먼저 적은 뒤 눌러주세요.");
+            return;
+        }
+        
+        auth.sendPasswordResetEmail(email).then(() => {
+            alert("입력하신 이메일로 비밀번호 재설정 링크를 보냈습니다!\n이메일함을 확인하시고 새 비밀번호를 설정해주세요.");
+        }).catch((error) => {
+            alert("메일 전송 실패: 가입된 이메일인지 확인해주세요.\n(" + error.message + ")");
+        });
+    }
+
+    // ==========================================
     // [회원가입, 로그인, 탈퇴 기능]
     // ==========================================
     function signup() {
@@ -300,7 +322,6 @@
         auth.signOut().then(() => { window.location.reload(); });
     }
 
-    // 회원 탈퇴 및 데이터베이스 일괄 삭제 로직
     async function deleteAccount() {
         if (!confirm("🚨 정말 탈퇴하시겠습니까?\n\n탈퇴 시 데이터베이스에 저장된 본인의 모든 결제 내역, 자산, 이체 구간 데이터가 영구적으로 삭제되며 절대 복구할 수 없습니다.")) {
             return;
@@ -310,7 +331,6 @@
         if (!user) return;
 
         try {
-            // 1. 사용자의 모든 컬렉션 데이터 가져와서 삭제하기 (Batch 삭제)
             const collections = ["가계부결제내역", "가계부자산목록", "가계부이체구간"];
             for (const colName of collections) {
                 const snapshot = await getCol(colName).get();
@@ -321,13 +341,11 @@
                 await batch.commit();
             }
 
-            // 2. 파이어베이스 인증 시스템에서 사용자 계정 영구 삭제
             await user.delete();
             alert("모든 데이터가 안전하게 삭제되었으며 회원 탈퇴가 완료되었습니다.");
             window.location.reload();
 
         } catch (error) {
-            // 보안을 위해 로그인한 지 오래된 상태에서 탈퇴하려고 하면 오류가 발생함
             if (error.code === 'auth/requires-recent-login') {
                 alert("🔒 보안상의 이유로 탈퇴하려면 다시 한 번 로그인해야 합니다.\n확인을 누르면 로그아웃되니, 다시 로그인하신 직후에 탈퇴 버튼을 눌러주세요.");
                 logout();
@@ -351,7 +369,6 @@
         }
     });
 
-    // family@myhouse.com 연결 규칙 포함
     function getCol(collectionName) {
         if (auth.currentUser && auth.currentUser.email === 'family@myhouse.com') {
             return db.collection(collectionName);
