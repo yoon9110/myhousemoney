@@ -39,7 +39,6 @@
     .owner-badge-husband { background-color: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #90caf9;}
     .owner-badge-wife { background-color: #fce4ec; color: #c2185b; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #f48fb1;}
     .owner-badge-common { background-color: #f5f5f5; color: #616161; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #bdbdbd;}
-
 </style>
 <!-- 파이어베이스 연결 도구 -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -50,15 +49,31 @@
 <div class="container">
     <h1>우리집 가계부 🏡</h1>
 
+    <!-- 1. 로그인/회원가입 화면 -->
     <div id="login-screen">
-        <p style="text-align: center; color: #666; font-size: 14px;">가족 공용 암호를 입력해 주세요.</p>
-        <input type="email" id="email" value="family@myhouse.com" style="margin-bottom: 10px; background-color: #eee;" readonly>
-        <input type="password" id="pw" placeholder="비밀번호">
-        <button onclick="login()" style="background-color: #4caf50;">열쇠로 열기</button>
+        <div style="background: #f1f8e9; padding: 15px; border-radius: 8px; border: 1px solid #c5e1a5; margin-bottom: 20px;">
+            <p style="text-align: center; color: #33691e; font-size: 14px; margin-top: 0; font-weight: bold;">개인 계정 로그인 및 회원가입</p>
+            <input type="email" id="email" placeholder="이메일 주소 (예: my@email.com)" style="margin-bottom: 10px;">
+            <input type="password" id="pw" placeholder="비밀번호 (6자리 이상)">
+            
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button onclick="login()" style="flex: 1; background-color: #4caf50;">로그인</button>
+                <button onclick="signup()" style="flex: 1; background-color: #ff9800;">새로 회원가입</button>
+            </div>
+        </div>
     </div>
 
+    <!-- 2. 메인 앱 화면 -->
     <div id="app-screen">
         
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div style="font-size: 14px; color: #555;">로그인 계정: <strong id="user-email-display"></strong></div>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="logout()" style="width: auto; padding: 6px 12px; margin: 0; background-color: #9e9e9e; font-size: 12px; border-radius: 20px;">로그아웃</button>
+                <button onclick="deleteAccount()" style="width: auto; padding: 6px 12px; margin: 0; background-color: #d32f2f; font-size: 12px; border-radius: 20px;">회원탈퇴</button>
+            </div>
+        </div>
+
         <div class="tab-container">
             <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white;">📝 가계부</button>
             <button id="btn-calendar" class="tab-btn" onclick="showSection('calendar')" style="background-color: #e8f5e9; color: #2e7d32;">📅 달력</button>
@@ -195,22 +210,17 @@
             
             <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">자산 상세 목록</h2>
             
-            <!-- 남편/아내 자산 분리 컨테이너 -->
             <div style="display: flex; gap: 15px; margin-top: 15px; align-items: flex-start;">
-                <!-- 남편 자산 영역 -->
                 <div style="flex: 1; background: #f8fbff; padding: 15px; border-radius: 8px; border: 1px solid #bbdefb;">
                     <h3 style="margin-top: 0; color: #1565c0; font-size: 15px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 10px;">👨 남편 자산</h3>
                     <div id="asset-list-husband"></div>
                 </div>
-                
-                <!-- 아내 자산 영역 -->
                 <div style="flex: 1; background: #fffcfd; padding: 15px; border-radius: 8px; border: 1px solid #f8bbd0;">
                     <h3 style="margin-top: 0; color: #c2185b; font-size: 15px; text-align: center; border-bottom: 1px dashed #f48fb1; padding-bottom: 10px;">👩 아내 자산</h3>
                     <div id="asset-list-wife"></div>
                 </div>
             </div>
             
-            <!-- 공동 자산 영역 -->
             <div style="margin-top: 15px; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;">
                 <h3 style="margin-top: 0; color: #616161; font-size: 15px; text-align: center; border-bottom: 1px dashed #bdbdbd; padding-bottom: 10px;">🏡 공동 및 기타 자산</h3>
                 <div id="asset-list-common"></div>
@@ -232,6 +242,11 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
+    let currentUserUid = null; 
+    let unsubPayments = null;
+    let unsubAssets = null;
+    let unsubRoutes = null;
 
     let editingId = null;
     let allPayments = []; 
@@ -261,22 +276,121 @@
         if (section === 'calendar') renderCalendar();
     }
 
+    // ==========================================
+    // [회원가입, 로그인, 탈퇴 기능]
+    // ==========================================
+    function signup() {
+        const email = document.getElementById('email').value;
+        const pw = document.getElementById('pw').value;
+        if(!email || !pw) { alert("이메일과 비밀번호를 입력해주세요."); return; }
+        auth.createUserWithEmailAndPassword(email, pw).then((userCredential) => {
+            alert("회원가입이 완료되었습니다! 가계부를 시작합니다.");
+        }).catch((error) => { alert("회원가입 실패: " + error.message); });
+    }
+
     function login() {
         const email = document.getElementById('email').value;
         const pw = document.getElementById('pw').value;
+        if(!email || !pw) { alert("이메일과 비밀번호를 입력해주세요."); return; }
         auth.signInWithEmailAndPassword(email, pw).then(() => {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'block';
-        }).catch((error) => { alert("비밀번호가 틀렸습니다!"); });
+        }).catch((error) => { alert("이메일이나 비밀번호가 틀렸습니다!"); });
+    }
+
+    function logout() {
+        auth.signOut().then(() => { window.location.reload(); });
+    }
+
+    // 회원 탈퇴 및 데이터베이스 일괄 삭제 로직
+    async function deleteAccount() {
+        if (!confirm("🚨 정말 탈퇴하시겠습니까?\n\n탈퇴 시 데이터베이스에 저장된 본인의 모든 결제 내역, 자산, 이체 구간 데이터가 영구적으로 삭제되며 절대 복구할 수 없습니다.")) {
+            return;
+        }
+        
+        const user = auth.currentUser;
+        if (!user) return;
+
+        try {
+            // 1. 사용자의 모든 컬렉션 데이터 가져와서 삭제하기 (Batch 삭제)
+            const collections = ["가계부결제내역", "가계부자산목록", "가계부이체구간"];
+            for (const colName of collections) {
+                const snapshot = await getCol(colName).get();
+                const batch = db.batch();
+                snapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+            }
+
+            // 2. 파이어베이스 인증 시스템에서 사용자 계정 영구 삭제
+            await user.delete();
+            alert("모든 데이터가 안전하게 삭제되었으며 회원 탈퇴가 완료되었습니다.");
+            window.location.reload();
+
+        } catch (error) {
+            // 보안을 위해 로그인한 지 오래된 상태에서 탈퇴하려고 하면 오류가 발생함
+            if (error.code === 'auth/requires-recent-login') {
+                alert("🔒 보안상의 이유로 탈퇴하려면 다시 한 번 로그인해야 합니다.\n확인을 누르면 로그아웃되니, 다시 로그인하신 직후에 탈퇴 버튼을 눌러주세요.");
+                logout();
+            } else {
+                alert("회원 탈퇴 중 오류 발생: " + error.message);
+            }
+        }
     }
 
     auth.onAuthStateChanged((user) => {
         if (user) {
+            currentUserUid = user.uid;
+            document.getElementById('user-email-display').innerText = user.email;
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'block';
             showSection('ledger'); 
+            initUserData(); 
+        } else {
+            document.getElementById('login-screen').style.display = 'block';
+            document.getElementById('app-screen').style.display = 'none';
         }
     });
+
+    // family@myhouse.com 연결 규칙 포함
+    function getCol(collectionName) {
+        if (auth.currentUser && auth.currentUser.email === 'family@myhouse.com') {
+            return db.collection(collectionName);
+        }
+        return db.collection(collectionName + "_" + currentUserUid);
+    }
+
+    function initUserData() {
+        if (unsubPayments) unsubPayments();
+        unsubPayments = getCol("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
+            allPayments = [];
+            querySnapshot.forEach((doc) => { allPayments.push({ id: doc.id, ...doc.data() }); });
+            renderList();
+            renderCalendar(); 
+        });
+
+        if (unsubAssets) unsubAssets();
+        unsubAssets = getCol("가계부자산목록").orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
+            allAssets = []; let bankTotal = 0; let investTotal = 0; let creditTotal = 0;
+            let husbandTotal = 0; let wifeTotal = 0; let commonTotal = 0;
+            querySnapshot.forEach((doc) => {
+                const data = doc.data(); const amt = Number(data.amount) || 0; const isFav = data.isFavorite === true; 
+                const owner = data.owner || 'common'; 
+                allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav });
+                if (data.type === 'bank') bankTotal += amt; else if (data.type === 'invest') investTotal += amt; else if (data.type === 'credit') creditTotal += amt;
+                if (owner === 'husband') husbandTotal += amt; else if (owner === 'wife') wifeTotal += amt; else commonTotal += amt;
+            });
+            updateAssetDropdowns();
+            renderList(); 
+            renderAssetScreen(bankTotal, investTotal, creditTotal, husbandTotal, wifeTotal, commonTotal);
+        });
+
+        if (unsubRoutes) unsubRoutes();
+        unsubRoutes = getCol("가계부이체구간").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+            favoriteRoutes = [];
+            snapshot.forEach(doc => { favoriteRoutes.push({ id: doc.id, ...doc.data() }); });
+            renderFavoriteRoutes();
+        });
+    }
 
     // ==========================================
     // [달력 렌더링 로직]
@@ -375,62 +489,50 @@
     // ==========================================
     function editData(id, date, merchant, amount, category, linkedAssetId) {
         editingId = id;
-        document.getElementById('date').value = date;
-        document.getElementById('merchant').value = merchant;
-        document.getElementById('amount').value = amount;
-        document.getElementById('category').value = category;
-        if(linkedAssetId) document.getElementById('linked-asset').value = linkedAssetId;
-        else document.getElementById('linked-asset').value = '';
-        document.getElementById('input-buttons').style.display = "none";
-        document.getElementById('edit-buttons').style.display = "flex";
+        document.getElementById('date').value = date; document.getElementById('merchant').value = merchant;
+        document.getElementById('amount').value = amount; document.getElementById('category').value = category;
+        if(linkedAssetId) document.getElementById('linked-asset').value = linkedAssetId; else document.getElementById('linked-asset').value = '';
+        document.getElementById('input-buttons').style.display = "none"; document.getElementById('edit-buttons').style.display = "flex";
         window.scrollTo(0, 0);
     }
 
     function cancelEdit() {
         editingId = null;
-        document.getElementById('input-buttons').style.display = "flex";
-        document.getElementById('edit-buttons').style.display = "none";
-        document.getElementById('merchant').value = '';
-        document.getElementById('amount').value = '';
-        document.getElementById('category').value = '';
-        document.getElementById('linked-asset').value = '';
+        document.getElementById('input-buttons').style.display = "flex"; document.getElementById('edit-buttons').style.display = "none";
+        document.getElementById('merchant').value = ''; document.getElementById('amount').value = '';
+        document.getElementById('category').value = ''; document.getElementById('linked-asset').value = '';
         document.getElementById('date').value = new Date().toISOString().substring(0, 10);
     }
 
     async function saveData(type) {
-        const date = document.getElementById('date').value;
-        const merchant = document.getElementById('merchant').value;
-        const amount = document.getElementById('amount').value;
-        const category = document.getElementById('category').value;
-        const linkedAssetId = document.getElementById('linked-asset').value;
-        const amountNum = Number(amount);
+        const date = document.getElementById('date').value; const merchant = document.getElementById('merchant').value;
+        const amount = document.getElementById('amount').value; const category = document.getElementById('category').value;
+        const linkedAssetId = document.getElementById('linked-asset').value; const amountNum = Number(amount);
 
         if(!merchant || !amount) { alert("결제처와 금액을 적어주세요!"); return; }
 
         try {
             if (editingId) {
-                const oldDoc = await db.collection("가계부결제내역").doc(editingId).get();
+                const oldDoc = await getCol("가계부결제내역").doc(editingId).get();
                 const oldData = oldDoc.data();
                 if (oldData.linkedAssetId) {
                     const oldAsset = allAssets.find(a => a.id === oldData.linkedAssetId);
                     if (oldAsset) {
                         let restoredAmt = oldAsset.amount;
-                        if (oldData.type === 'income') restoredAmt -= Number(oldData.amount);
-                        else if (oldData.type === 'expense') restoredAmt += Number(oldData.amount);
+                        if (oldData.type === 'income') restoredAmt -= Number(oldData.amount); else if (oldData.type === 'expense') restoredAmt += Number(oldData.amount);
                         oldAsset.amount = restoredAmt; 
-                        await db.collection("가계부자산목록").doc(oldData.linkedAssetId).update({ amount: restoredAmt });
+                        await getCol("가계부자산목록").doc(oldData.linkedAssetId).update({ amount: restoredAmt });
                     }
                 }
                 if (linkedAssetId) {
                     const newAsset = allAssets.find(a => a.id === linkedAssetId);
                     if (newAsset) {
                         let newAmt = newAsset.amount;
-                        if (type === 'income') newAmt += amountNum;
-                        else if (type === 'expense') newAmt -= amountNum;
-                        await db.collection("가계부자산목록").doc(linkedAssetId).update({ amount: newAmt });
+                        if (type === 'income') newAmt += amountNum; else if (type === 'expense') newAmt -= amountNum;
+                        await getCol("가계부자산목록").doc(linkedAssetId).update({ amount: newAmt });
                     }
                 }
-                await db.collection("가계부결제내역").doc(editingId).update({
+                await getCol("가계부결제내역").doc(editingId).update({
                     date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId
                 });
                 alert("내역이 수정되고 자산 잔고가 업데이트되었습니다!");
@@ -440,38 +542,28 @@
                     const targetAsset = allAssets.find(a => a.id === linkedAssetId);
                     if (targetAsset) {
                         let newAmount = targetAsset.amount;
-                        if (type === 'income') newAmount += amountNum; 
-                        else if (type === 'expense') newAmount -= amountNum; 
-                        await db.collection("가계부자산목록").doc(linkedAssetId).update({ amount: newAmount });
+                        if (type === 'income') newAmount += amountNum; else if (type === 'expense') newAmount -= amountNum; 
+                        await getCol("가계부자산목록").doc(linkedAssetId).update({ amount: newAmount });
                     }
                 }
-                await db.collection("가계부결제내역").add({
-                    date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                await getCol("가계부결제내역").add({
+                    date: date, merchant: merchant, amount: amountNum, category: category, type: type, linkedAssetId: linkedAssetId, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert(linkedAssetId ? "자산 잔액이 자동으로 변경되고 내역이 저장되었습니다!" : "내역이 저장되었습니다!");
+                alert(linkedAssetId ? "자산 잔액이 변경되고 내역이 저장되었습니다!" : "내역이 저장되었습니다!");
                 cancelEdit();
             }
         } catch (error) { alert("처리 실패! " + error.message); }
     }
 
     async function saveFavoriteRoute() {
-        const fromId = document.getElementById('transfer-from').value;
-        const toId = document.getElementById('transfer-to').value;
-        const memo = document.getElementById('transfer-memo').value;
-        if(!fromId || !toId) { alert("출금 자산과 입금 자산을 먼저 선택해주세요!"); return; }
+        const fromId = document.getElementById('transfer-from').value; const toId = document.getElementById('transfer-to').value; const memo = document.getElementById('transfer-memo').value;
+        if(!fromId || !toId) { alert("출금/입금 자산을 선택해주세요!"); return; }
         if(fromId === toId) { alert("서로 다른 자산을 선택해주세요."); return; }
         try {
-            await db.collection("가계부이체구간").add({ fromId: fromId, toId: toId, memo: memo || '', timestamp: Date.now() });
+            await getCol("가계부이체구간").add({ fromId: fromId, toId: toId, memo: memo || '', timestamp: Date.now() });
             alert("⭐ 자주 쓰는 이체 구간으로 저장되었습니다!");
         } catch (error) { alert("구간 저장 실패: " + error.message); }
     }
-
-    db.collection("가계부이체구간").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
-        favoriteRoutes = [];
-        snapshot.forEach(doc => { favoriteRoutes.push({ id: doc.id, ...doc.data() }); });
-        renderFavoriteRoutes();
-    });
 
     function renderFavoriteRoutes() {
         const container = document.getElementById('favorite-routes-container');
@@ -482,71 +574,50 @@
             return;
         }
         favoriteRoutes.forEach(route => {
-            const fromAsset = allAssets.find(a => a.id === route.fromId);
-            const toAsset = allAssets.find(a => a.id === route.toId);
+            const fromAsset = allAssets.find(a => a.id === route.fromId); const toAsset = allAssets.find(a => a.id === route.toId);
             if(!fromAsset || !toAsset) return; 
-            
-            // 소유자 뱃지 추가
-            const fromBadge = getOwnerBadgeHTML(fromAsset.owner);
-            const toBadge = getOwnerBadgeHTML(toAsset.owner);
-
+            const fromBadge = getOwnerBadgeHTML(fromAsset.owner); const toBadge = getOwnerBadgeHTML(toAsset.owner);
             const btn = document.createElement('div');
             btn.style = "background: #e3f2fd; color: #1565c0; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border: 1px solid #90caf9;";
-            btn.innerHTML = `
-                <span onclick="applyRoute('${route.fromId}', '${route.toId}', '${route.memo}')" style="font-weight: bold; display: flex; align-items: center;">
-                    ⭐ ${fromBadge}${fromAsset.name} ➔ ${toBadge}${toAsset.name}
-                </span>
-                <span onclick="deleteRoute('${route.id}')" style="color: #d32f2f; font-weight: bold; padding-left: 5px; border-left: 1px solid #90caf9;">✕</span>
-            `;
+            btn.innerHTML = `<span onclick="applyRoute('${route.fromId}', '${route.toId}', '${route.memo}')" style="font-weight: bold; display: flex; align-items: center;">⭐ ${fromBadge}${fromAsset.name} ➔ ${toBadge}${toAsset.name}</span>
+                             <span onclick="deleteRoute('${route.id}')" style="color: #d32f2f; font-weight: bold; padding-left: 5px; border-left: 1px solid #90caf9;">✕</span>`;
             container.appendChild(btn);
         });
     }
 
     function applyRoute(fromId, toId, memo) {
-        document.getElementById('transfer-from').value = fromId;
-        document.getElementById('transfer-to').value = toId;
-        document.getElementById('transfer-memo').value = memo;
+        document.getElementById('transfer-from').value = fromId; document.getElementById('transfer-to').value = toId; document.getElementById('transfer-memo').value = memo;
     }
     
     async function deleteRoute(id) {
-        if(confirm("이 즐겨찾기 구간을 삭제하시겠습니까?")) await db.collection("가계부이체구간").doc(id).delete();
+        if(confirm("이 즐겨찾기 구간을 삭제하시겠습니까?")) await getCol("가계부이체구간").doc(id).delete();
     }
 
     async function transferAsset() {
-        const fromId = document.getElementById('transfer-from').value;
-        const toId = document.getElementById('transfer-to').value;
-        const amountStr = document.getElementById('transfer-amount').value;
-        const memoStr = document.getElementById('transfer-memo').value;
-        const amount = Number(amountStr);
+        const fromId = document.getElementById('transfer-from').value; const toId = document.getElementById('transfer-to').value;
+        const amountStr = document.getElementById('transfer-amount').value; const memoStr = document.getElementById('transfer-memo').value; const amount = Number(amountStr);
 
-        if(!fromId || !toId || !amountStr) { alert("출금/입금 자산 및 이체 금액을 입력해주세요!"); return; }
+        if(!fromId || !toId || !amountStr) { alert("자산 및 금액을 입력해주세요!"); return; }
         if(fromId === toId) { alert("서로 다르게 선택해주세요."); return; }
         if(amount <= 0) { alert("금액은 0원보다 커야 합니다."); return; }
 
-        const fromAsset = allAssets.find(a => a.id === fromId);
-        const toAsset = allAssets.find(a => a.id === toId);
-
+        const fromAsset = allAssets.find(a => a.id === fromId); const toAsset = allAssets.find(a => a.id === toId);
         try {
-            await db.collection("가계부자산목록").doc(fromId).update({ amount: fromAsset.amount - amount });
-            await db.collection("가계부자산목록").doc(toId).update({ amount: toAsset.amount + amount });
-            
+            await getCol("가계부자산목록").doc(fromId).update({ amount: fromAsset.amount - amount });
+            await getCol("가계부자산목록").doc(toId).update({ amount: toAsset.amount + amount });
             const fromPrefix = fromAsset.owner === 'husband' ? '남편' : (fromAsset.owner === 'wife' ? '아내' : '공동');
             const toPrefix = toAsset.owner === 'husband' ? '남편' : (toAsset.owner === 'wife' ? '아내' : '공동');
 
-            await db.collection("가계부결제내역").add({
+            await getCol("가계부결제내역").add({
                 date: document.getElementById('date').value, merchant: `[${fromPrefix}]${fromAsset.name} ➔ [${toPrefix}]${toAsset.name}`, amount: amount, category: "자산이체", type: 'transfer', fromAssetId: fromId, toAssetId: toId, memo: memoStr, timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            alert(`✅ 이체 내역이 정상적으로 저장되었습니다!`);
-            document.getElementById('transfer-amount').value = '';
-            document.getElementById('transfer-from').value = '';
-            document.getElementById('transfer-to').value = '';
-            document.getElementById('transfer-memo').value = '';
+            alert(`✅ 이체 내역이 저장되었습니다!`);
+            document.getElementById('transfer-amount').value = ''; document.getElementById('transfer-from').value = ''; document.getElementById('transfer-to').value = ''; document.getElementById('transfer-memo').value = '';
         } catch (error) { alert("이체 중 오류 발생: " + error.message); }
     }
 
     function setCategoryFilter(category) {
-        if (currentCategoryFilter === category) currentCategoryFilter = null; 
-        else currentCategoryFilter = category;
+        if (currentCategoryFilter === category) currentCategoryFilter = null; else currentCategoryFilter = category;
         renderList();
     }
 
@@ -570,24 +641,12 @@
             link.href = URL.createObjectURL(blob);
             let fileName = filterMonth ? `우리집_가계부_${filterMonth}` : "우리집_가계부_전체";
             if (currentCategoryFilter) fileName += `_${currentCategoryFilter}`;
-            link.download = fileName + ".csv";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            link.download = fileName + ".csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link);
         } catch (error) { alert("저장 중 오류가 발생했습니다."); }
     }
 
-    db.collection("가계부결제내역").orderBy("date", "desc").onSnapshot((querySnapshot) => {
-        allPayments = [];
-        querySnapshot.forEach((doc) => { allPayments.push({ id: doc.id, ...doc.data() }); });
-        renderList();
-        renderCalendar(); 
-    });
-
     function renderList() {
-        const listContainer = document.getElementById("payment-list");
-        const summaryBox = document.getElementById("summary-box");
-        const filterMonth = document.getElementById("filter-month").value; 
+        const listContainer = document.getElementById("payment-list"); const summaryBox = document.getElementById("summary-box"); const filterMonth = document.getElementById("filter-month").value; 
         if (!listContainer || !summaryBox) return;
         
         listContainer.innerHTML = "";
@@ -595,15 +654,9 @@
         
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
-            const amountNum = Number(data.amount) || 0;
-            const catName = data.category || '기타';
-            if (data.type === 'expense') {
-                totalExpense += amountNum;
-                if (expenseSums[catName]) expenseSums[catName] += amountNum; else expenseSums[catName] = amountNum;
-            } else if (data.type === 'income') {
-                totalIncome += amountNum;
-                if (incomeSums[catName]) incomeSums[catName] += amountNum; else incomeSums[catName] = amountNum;
-            }
+            const amountNum = Number(data.amount) || 0; const catName = data.category || '기타';
+            if (data.type === 'expense') { totalExpense += amountNum; if (expenseSums[catName]) expenseSums[catName] += amountNum; else expenseSums[catName] = amountNum; } 
+            else if (data.type === 'income') { totalIncome += amountNum; if (incomeSums[catName]) incomeSums[catName] += amountNum; else incomeSums[catName] = amountNum; }
         });
 
         const displayMonth = filterMonth ? filterMonth.split('-')[1] + '월' : '전체';
@@ -633,13 +686,9 @@
             const amountNum = Number(data.amount) || 0;
             let amountStr = ''; let typeTag = '';
             
-            if (data.type === 'income') {
-                amountStr = `<strong style="color: #1976d2;">+ ${amountNum.toLocaleString()}원</strong>`; typeTag = `<span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">수입</span>`;
-            } else if (data.type === 'transfer') {
-                amountStr = `<strong style="color: #757575;">${amountNum.toLocaleString()}원 이동</strong>`; typeTag = `<span style="background: #eeeeee; color: #757575; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">이체</span>`;
-            } else { 
-                amountStr = `<strong style="color: #d32f2f;">- ${amountNum.toLocaleString()}원</strong>`; typeTag = `<span style="background: #ffebee; color: #d32f2f; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">지출</span>`;
-            }
+            if (data.type === 'income') { amountStr = `<strong style="color: #1976d2;">+ ${amountNum.toLocaleString()}원</strong>`; typeTag = `<span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">수입</span>`; } 
+            else if (data.type === 'transfer') { amountStr = `<strong style="color: #757575;">${amountNum.toLocaleString()}원 이동</strong>`; typeTag = `<span style="background: #eeeeee; color: #757575; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">이체</span>`; } 
+            else { amountStr = `<strong style="color: #d32f2f;">- ${amountNum.toLocaleString()}원</strong>`; typeTag = `<span style="background: #ffebee; color: #d32f2f; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px;">지출</span>`; }
             
             const memoHtml = data.memo ? `<div style="font-size: 0.85em; color: #757575; margin-top: 5px;">📝 메모: ${data.memo}</div>` : '';
             let linkedAssetStr = '';
@@ -672,89 +721,50 @@
         if (!confirm("이 내역을 삭제하시겠습니까? (연결된 자산 잔고도 원래대로 복구됩니다)")) return;
         try {
             const targetItem = allPayments.find(p => p.id === id);
-            if (!targetItem) { await db.collection("가계부결제내역").doc(id).delete(); return; }
+            if (!targetItem) { await getCol("가계부결제내역").doc(id).delete(); return; }
             const amt = Number(targetItem.amount) || 0;
             if (targetItem.type === 'transfer' && targetItem.fromAssetId && targetItem.toAssetId) {
-                const fromAsset = allAssets.find(a => a.id === targetItem.fromAssetId);
-                const toAsset = allAssets.find(a => a.id === targetItem.toAssetId);
-                if (fromAsset) await db.collection("가계부자산목록").doc(fromAsset.id).update({ amount: fromAsset.amount + amt });
-                if (toAsset) await db.collection("가계부자산목록").doc(toAsset.id).update({ amount: toAsset.amount - amt });
+                const fromAsset = allAssets.find(a => a.id === targetItem.fromAssetId); const toAsset = allAssets.find(a => a.id === targetItem.toAssetId);
+                if (fromAsset) await getCol("가계부자산목록").doc(fromAsset.id).update({ amount: fromAsset.amount + amt });
+                if (toAsset) await getCol("가계부자산목록").doc(toAsset.id).update({ amount: toAsset.amount - amt });
             } 
             else if (targetItem.linkedAssetId) {
                 const targetAsset = allAssets.find(a => a.id === targetItem.linkedAssetId);
                 if (targetAsset) {
                     let restoredAmount = targetAsset.amount;
-                    if (targetItem.type === 'income') restoredAmount -= amt; 
-                    else if (targetItem.type === 'expense') restoredAmount += amt; 
-                    await db.collection("가계부자산목록").doc(targetItem.linkedAssetId).update({ amount: restoredAmount });
+                    if (targetItem.type === 'income') restoredAmount -= amt; else if (targetItem.type === 'expense') restoredAmount += amt; 
+                    await getCol("가계부자산목록").doc(targetItem.linkedAssetId).update({ amount: restoredAmount });
                 }
             }
-            await db.collection("가계부결제내역").doc(id).delete();
+            await getCol("가계부결제내역").doc(id).delete();
             alert("내역이 삭제되고 자산 잔고가 원복되었습니다.");
         } catch (error) { alert("삭제 중 오류 발생: " + error.message); }
     }
 
     // ==========================================
-    // [자산] 관련 코드 (남편/아내 분리 로직 적용)
+    // [자산] 관련 코드
     // ==========================================
     function editAssetData(id, owner, type, name, amount) {
-        editingAssetId = id; 
-        document.getElementById('asset-owner').value = owner || 'common';
-        document.getElementById('asset-type').value = type; 
-        document.getElementById('asset-name').value = name; 
-        document.getElementById('asset-amount').value = amount;
-        
-        document.getElementById('saveAssetBtn').innerText = "수정 완료하기"; 
-        document.getElementById('saveAssetBtn').style.backgroundColor = "#f57c00"; 
-        document.getElementById('cancelAssetEditBtn').style.display = "block"; 
-        window.scrollTo(0, 0);
+        editingAssetId = id; document.getElementById('asset-owner').value = owner || 'common'; document.getElementById('asset-type').value = type; document.getElementById('asset-name').value = name; document.getElementById('asset-amount').value = amount;
+        document.getElementById('saveAssetBtn').innerText = "수정 완료하기"; document.getElementById('saveAssetBtn').style.backgroundColor = "#f57c00"; document.getElementById('cancelAssetEditBtn').style.display = "block"; window.scrollTo(0, 0);
     }
-    
     function cancelAssetEdit() {
-        editingAssetId = null; 
-        document.getElementById('saveAssetBtn').innerText = "자산 추가하기"; 
-        document.getElementById('saveAssetBtn').style.backgroundColor = "#1b5e20"; 
-        document.getElementById('cancelAssetEditBtn').style.display = "none";
-        
-        document.getElementById('asset-owner').value = 'husband';
-        document.getElementById('asset-name').value = ''; 
-        document.getElementById('asset-amount').value = '';
+        editingAssetId = null; document.getElementById('saveAssetBtn').innerText = "자산 추가하기"; document.getElementById('saveAssetBtn').style.backgroundColor = "#1b5e20"; document.getElementById('cancelAssetEditBtn').style.display = "none";
+        document.getElementById('asset-owner').value = 'husband'; document.getElementById('asset-name').value = ''; document.getElementById('asset-amount').value = '';
     }
-    
     async function saveAssetData() {
-        const owner = document.getElementById('asset-owner').value;
-        const type = document.getElementById('asset-type').value; 
-        const name = document.getElementById('asset-name').value; 
-        const amount = document.getElementById('asset-amount').value;
-        
+        const owner = document.getElementById('asset-owner').value; const type = document.getElementById('asset-type').value; const name = document.getElementById('asset-name').value; const amount = document.getElementById('asset-amount').value;
         if(!name || !amount) { alert("자산명과 금액을 적어주세요!"); return; }
-        
         try {
-            if (editingAssetId) { 
-                await db.collection("가계부자산목록").doc(editingAssetId).update({ 
-                    owner: owner, type: type, name: name, amount: Number(amount) 
-                }); 
-                alert("자산이 수정되었습니다!"); 
-                cancelAssetEdit(); 
-            } 
-            else { 
-                await db.collection("가계부자산목록").add({ 
-                    owner: owner, type: type, name: name, amount: Number(amount), isFavorite: false, timestamp: Date.now() 
-                }); 
-                alert("새로운 자산이 추가되었습니다!"); 
-                document.getElementById('asset-name').value = ''; 
-                document.getElementById('asset-amount').value = ''; 
-            }
+            if (editingAssetId) { await getCol("가계부자산목록").doc(editingAssetId).update({ owner: owner, type: type, name: name, amount: Number(amount) }); alert("자산이 수정되었습니다!"); cancelAssetEdit(); } 
+            else { await getCol("가계부자산목록").add({ owner: owner, type: type, name: name, amount: Number(amount), isFavorite: false, timestamp: Date.now() }); alert("새로운 자산이 추가되었습니다!"); document.getElementById('asset-name').value = ''; document.getElementById('asset-amount').value = ''; }
         } catch (error) { alert("자산 저장 실패! " + error.message); }
     }
-    
-    async function deleteAssetData(id) { if (confirm("이 자산을 삭제하시겠습니까?")) { await db.collection("가계부자산목록").doc(id).delete(); } }
-    async function toggleFavorite(id, currentStatus) { try { await db.collection("가계부자산목록").doc(id).update({ isFavorite: !currentStatus }); } catch(error) { alert("즐겨찾기 설정 오류"); } }
+    async function deleteAssetData(id) { if (confirm("이 자산을 삭제하시겠습니까?")) { await getCol("가계부자산목록").doc(id).delete(); } }
+    async function toggleFavorite(id, currentStatus) { try { await getCol("가계부자산목록").doc(id).update({ isFavorite: !currentStatus }); } catch(error) { alert("즐겨찾기 설정 오류"); } }
 
     function getOwnerBadgeHTML(owner) {
-        if(owner === 'husband') return `<span class="owner-badge-husband">남편</span>`;
-        if(owner === 'wife') return `<span class="owner-badge-wife">아내</span>`;
-        return `<span class="owner-badge-common">공동</span>`;
+        if(owner === 'husband') return `<span class="owner-badge-husband">남편</span>`; if(owner === 'wife') return `<span class="owner-badge-wife">아내</span>`; return `<span class="owner-badge-common">공동</span>`;
     }
 
     function updateAssetDropdowns() {
@@ -762,66 +772,30 @@
         let groupedHtml = '<option value="">선택 안 함 (가계부 내역만 기록)</option>';
         if(favAssets.length > 0) { 
             groupedHtml += '<optgroup label="⭐ 즐겨찾는 자산">'; 
-            favAssets.forEach(asset => { 
-                const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ');
-                groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; 
-            }); 
+            favAssets.forEach(asset => { const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] '); groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; }); 
             groupedHtml += '</optgroup>'; 
         }
         if(normalAssets.length > 0) { 
             groupedHtml += '<optgroup label="일반 자산">'; 
-            normalAssets.forEach(asset => { 
-                const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ');
-                groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; 
-            }); 
+            normalAssets.forEach(asset => { const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] '); groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; }); 
             groupedHtml += '</optgroup>'; 
         }
         const linkedSelect = document.getElementById('linked-asset');
         if(linkedSelect) { const prevLinked = linkedSelect.value; linkedSelect.innerHTML = groupedHtml; if (prevLinked && allAssets.find(a => a.id === prevLinked)) linkedSelect.value = prevLinked; }
 
         let flatHtml = '<option value="">선택하세요</option>';
-        allAssets.forEach(asset => { 
-            const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ');
-            flatHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; 
-        });
+        allAssets.forEach(asset => { const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] '); flatHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; });
         const fromSelect = document.getElementById('transfer-from'); const toSelect = document.getElementById('transfer-to');
         if(fromSelect) { const prevFrom = fromSelect.value; fromSelect.innerHTML = flatHtml; if (prevFrom && allAssets.find(a => a.id === prevFrom)) fromSelect.value = prevFrom; }
         if(toSelect) { const prevTo = toSelect.value; toSelect.innerHTML = flatHtml; if (prevTo && allAssets.find(a => a.id === prevTo)) toSelect.value = prevTo; }
-        renderFavoriteRoutes(); 
     }
 
-    db.collection("가계부자산목록").orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
-        allAssets = []; let bankTotal = 0; let investTotal = 0; let creditTotal = 0;
-        
-        // 소유자별 합계 계산을 위한 변수
-        let husbandTotal = 0; let wifeTotal = 0; let commonTotal = 0;
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data(); const amt = Number(data.amount) || 0; const isFav = data.isFavorite === true; 
-            const owner = data.owner || 'common'; // 기존 데이터 호환을 위해 기본값 세팅
-            
-            allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav });
-            
-            if (data.type === 'bank') bankTotal += amt; else if (data.type === 'invest') investTotal += amt; else if (data.type === 'credit') creditTotal += amt;
-            
-            if (owner === 'husband') husbandTotal += amt;
-            else if (owner === 'wife') wifeTotal += amt;
-            else commonTotal += amt;
-        });
-
-        updateAssetDropdowns();
-        renderList(); 
-
+    function renderAssetScreen(bankTotal, investTotal, creditTotal, husbandTotal, wifeTotal, commonTotal) {
         const assetSummary = document.getElementById("asset-summary"); 
-        const listHusband = document.getElementById("asset-list-husband");
-        const listWife = document.getElementById("asset-list-wife");
-        const listCommon = document.getElementById("asset-list-common");
-        
+        const listHusband = document.getElementById("asset-list-husband"); const listWife = document.getElementById("asset-list-wife"); const listCommon = document.getElementById("asset-list-common");
         if (!assetSummary || !listHusband) return;
         
-        listHusband.innerHTML = "";
-        listWife.innerHTML = "";
-        listCommon.innerHTML = "";
+        listHusband.innerHTML = ""; listWife.innerHTML = ""; listCommon.innerHTML = "";
 
         allAssets.forEach((data) => {
             let typeEmoji = '🏦 은행'; if (data.type === 'invest') typeEmoji = '📈 투자'; else if (data.type === 'credit') typeEmoji = '💳 신용카드';
@@ -829,14 +803,9 @@
             
             const listItem = document.createElement("div"); 
             listItem.style = "padding: 10px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;";
-            
             listItem.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <div style="font-size: 0.8em; color: #888; margin-bottom: 2px;">[${typeEmoji}]</div>
-                        <div style="font-size: 1em; margin-bottom: 2px;"><strong>${data.name}</strong></div>
-                        <div style="font-size: 0.95em; font-weight: bold; color: ${amountColor};">${data.amount.toLocaleString()}원</div>
-                    </div>
+                    <div><div style="font-size: 0.8em; color: #888; margin-bottom: 2px;">[${typeEmoji}]</div><div style="font-size: 1em; margin-bottom: 2px;"><strong>${data.name}</strong></div><div style="font-size: 0.95em; font-weight: bold; color: ${amountColor};">${data.amount.toLocaleString()}원</div></div>
                     <button onclick="toggleFavorite('${data.id}', ${data.isFavorite})" style="width: auto; padding: 4px 8px; background-color: ${data.isFavorite ? '#ffb300' : 'transparent'}; font-size: 11px; margin-top: 0; color: ${data.isFavorite ? 'white' : '#bdbdbd'}; border: 1px solid ${data.isFavorite ? '#ffb300' : '#e0e0e0'}; border-radius: 4px; cursor: pointer;">${data.isFavorite ? '⭐ 해제' : '☆ 즐겨찾기'}</button>
                 </div>
                 <div style="display: flex; gap: 5px; width: 100%;">
@@ -844,14 +813,9 @@
                     <button onclick="deleteAssetData('${data.id}')" style="padding: 5px; background-color: #d32f2f; font-size: 11px; color: white; border: none; border-radius: 4px; flex: 1;">삭제</button>
                 </div>
             `;
-            
-            // 소유자에 따라 다른 리스트에 어펜드
-            if(data.owner === 'husband') listHusband.appendChild(listItem);
-            else if(data.owner === 'wife') listWife.appendChild(listItem);
-            else listCommon.appendChild(listItem);
+            if(data.owner === 'husband') listHusband.appendChild(listItem); else if(data.owner === 'wife') listWife.appendChild(listItem); else listCommon.appendChild(listItem);
         });
 
-        // 빈 목록 처리
         if(listHusband.innerHTML === "") listHusband.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
         if(listWife.innerHTML === "") listWife.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
         if(listCommon.innerHTML === "") listCommon.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
@@ -860,12 +824,7 @@
         assetSummary.innerHTML = `
             <div style="font-size: 1.1em; color: #555; margin-bottom: 5px;">현재 총 자산</div>
             <div style="font-size: 2.2em; font-weight: bold; color: #1b5e20; margin-bottom: 20px;">${total.toLocaleString()}원</div>
-            
-            <div style="display: flex; justify-content: space-around; margin-bottom: 20px; font-size: 13px;">
-                <span style="color: #1565c0;">👨 남편: <strong>${husbandTotal.toLocaleString()}</strong>원</span>
-                <span style="color: #c2185b;">👩 아내: <strong>${wifeTotal.toLocaleString()}</strong>원</span>
-            </div>
-
+            <div style="display: flex; justify-content: space-around; margin-bottom: 20px; font-size: 13px;"><span style="color: #1565c0;">👨 남편: <strong>${husbandTotal.toLocaleString()}</strong>원</span><span style="color: #c2185b;">👩 아내: <strong>${wifeTotal.toLocaleString()}</strong>원</span></div>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                 <div style="background: white; padding: 12px 8px; border-radius: 8px; border: 1px solid #c8e6c9;">
                     <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">🏦 은행 잔고</div><div style="font-size: 1.05em; font-weight: bold; color: ${bankTotal < 0 ? '#d32f2f' : '#2e7d32'}; word-break: break-all;">${bankTotal.toLocaleString()}원</div>
@@ -878,7 +837,7 @@
                 </div>
             </div>
         `;
-    });
+    }
 </script>
 </body>
 </html>
