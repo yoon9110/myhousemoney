@@ -8,7 +8,7 @@
     body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4fbf4; color: #333; margin: 0; padding: 20px; }
     .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     h1 { color: #2e7d32; text-align: center; font-size: 24px; margin-bottom: 25px; }
-    .form-group { margin-bottom: 15px; }
+    .form-group { margin-bottom: 15px; position: relative; }
     label { display: block; margin-bottom: 5px; font-weight: bold; color: #4caf50; font-size: 14px;}
     input, select { width: 100%; padding: 10px; border: 1px solid #c8e6c9; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
     button { color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.2s; }
@@ -18,6 +18,42 @@
     
     .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
     .tab-btn { margin: 0; border-radius: 0; width: 33.33%; font-size: 15px; padding: 12px 0; }
+
+    /* 최근 입력어 자동완성 드롭다운 */
+    .recent-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #81c784;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        z-index: 1000;
+        overflow: hidden;
+    }
+    .recent-dropdown-header {
+        font-size: 11px;
+        color: #2e7d32;
+        background: #f1f8e9;
+        padding: 5px 10px;
+        font-weight: bold;
+        border-bottom: 1px solid #e8f5e9;
+    }
+    .recent-item {
+        padding: 9px 12px;
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .recent-item:last-child { border-bottom: none; }
+    .recent-item:hover { background-color: #e8f5e9; color: #1b5e20; font-weight: bold; }
 
     /* 달력 디자인 */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -61,7 +97,6 @@
                 <button onclick="signup()" style="flex: 1; background-color: #ff9800;">새로 회원가입</button>
             </div>
             
-            <!-- 비밀번호 찾기 버튼 -->
             <div style="margin-top: 15px; text-align: center;">
                 <span onclick="resetPassword()" style="font-size: 13px; color: #1565c0; cursor: pointer; text-decoration: underline; font-weight: bold;">비밀번호를 잊으셨나요?</span>
             </div>
@@ -119,17 +154,19 @@
                         <option value="">선택 안 함 (가계부 내역만 기록)</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="merchant-group">
                     <label>결제처</label>
-                    <input type="text" id="merchant" placeholder="예: 네이버페이, 월급 통장">
+                    <input type="text" id="merchant" autocomplete="off" placeholder="예: 네이버페이, 월급 통장" onfocus="showRecentDropdown('merchant')" oninput="showRecentDropdown('merchant')">
+                    <div id="merchant-recent-box" class="recent-dropdown"></div>
                 </div>
                 <div class="form-group">
                     <label>금액</label>
                     <input type="number" id="amount" placeholder="예: 25000">
                 </div>
-                <div class="form-group" style="margin-bottom: 0;">
+                <div class="form-group" id="category-group" style="margin-bottom: 0;">
                     <label>항목</label>
-                    <input type="text" id="category" placeholder="예: 식비, 주유비, 월급 등">
+                    <input type="text" id="category" autocomplete="off" placeholder="예: 식비, 주유비, 월급 등" onfocus="showRecentDropdown('category')" oninput="showRecentDropdown('category')">
+                    <div id="category-recent-box" class="recent-dropdown"></div>
                 </div>
                 
                 <div id="input-buttons" style="display: flex; gap: 10px;">
@@ -266,6 +303,78 @@
     const today = new Date();
     document.getElementById('date').value = today.toISOString().substring(0, 10);
     document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
+
+    // ==========================================
+    // [최근 입력어 5개 추천 드롭다운 로직]
+    // ==========================================
+    function getRecentValues(field) {
+        const sorted = [...allPayments]
+            .filter(p => p.type !== 'transfer' && p[field] && String(p[field]).trim() !== '')
+            .sort((a, b) => {
+                if (a.date !== b.date) return b.date.localeCompare(a.date);
+                const tA = a.timestamp && a.timestamp.seconds ? a.timestamp.seconds : 0;
+                const tB = b.timestamp && b.timestamp.seconds ? b.timestamp.seconds : 0;
+                return tB - tA;
+            });
+
+        const unique = [];
+        for (const item of sorted) {
+            const val = String(item[field]).trim();
+            if (!unique.includes(val)) {
+                unique.push(val);
+                if (unique.length >= 5) break;
+            }
+        }
+        return unique;
+    }
+
+    function showRecentDropdown(field) {
+        const otherField = field === 'merchant' ? 'category' : 'merchant';
+        const otherBox = document.getElementById(otherField + '-recent-box');
+        if (otherBox) otherBox.style.display = 'none';
+
+        const input = document.getElementById(field);
+        const box = document.getElementById(field + '-recent-box');
+        if (!input || !box) return;
+
+        const keyword = input.value.trim().toLowerCase();
+        let recents = getRecentValues(field);
+
+        if (keyword !== '') {
+            recents = recents.filter(val => val.toLowerCase().includes(keyword) && val.toLowerCase() !== keyword);
+        }
+
+        if (recents.length === 0) {
+            box.style.display = 'none';
+            return;
+        }
+
+        box.innerHTML = `<div class="recent-dropdown-header">🕒 최근 입력어 (클릭 시 자동입력)</div>`;
+        recents.forEach(val => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'recent-item';
+            itemDiv.innerHTML = `<span>${val}</span><span style="font-size: 11px; color: #81c784;">선택 ↵</span>`;
+            itemDiv.addEventListener('click', () => {
+                input.value = val;
+                box.style.display = 'none';
+            });
+            box.appendChild(itemDiv);
+        });
+
+        box.style.display = 'block';
+    }
+
+    // 바깥 영역 클릭 시 최근 입력어 창 닫기
+    document.addEventListener('click', (e) => {
+        const merchantGroup = document.getElementById('merchant-group');
+        const categoryGroup = document.getElementById('category-group');
+        if (merchantGroup && !merchantGroup.contains(e.target)) {
+            document.getElementById('merchant-recent-box').style.display = 'none';
+        }
+        if (categoryGroup && !categoryGroup.contains(e.target)) {
+            document.getElementById('category-recent-box').style.display = 'none';
+        }
+    });
 
     function showSection(section) {
         const tabs = ['ledger', 'calendar', 'asset'];
