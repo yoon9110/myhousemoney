@@ -17,7 +17,8 @@
     #app-screen { display: none; }
     
     .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
-    .tab-btn { margin: 0; border-radius: 0; width: 33.33%; font-size: 15px; padding: 12px 0; }
+    .tab-btn { margin: 0; border-radius: 0; flex: 1; font-size: 13px; padding: 10px 4px; line-height: 1.25; word-break: keep-all; border-right: 1px solid #c8e6c9; }
+    .tab-btn:last-child { border-right: none; }
 
     /* 달력 디자인 */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -54,6 +55,12 @@
     .budget-box { background: white; padding: 12px; border-radius: 8px; border: 1px solid #c8e6c9; margin-bottom: 15px; }
     .budget-bar-bg { width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 8px 0; }
     .budget-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background-color 0.3s ease; }
+
+    /* 카드&은행별 입출금 내역 버튼 그리드 */
+    .asset-selector-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
+    .asset-select-card { background: #fafafa; border: 1px solid #c8e6c9; border-radius: 8px; padding: 10px; cursor: pointer; transition: 0.15s; text-align: left; }
+    .asset-select-card:hover { background: #f1f8e9; }
+    .asset-select-card.active { background: #e8f5e9; border: 2px solid #2e7d32; box-shadow: 0 2px 6px rgba(46,125,50,0.15); }
 
     /* 달력 상세 팝업 모달 */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
@@ -103,6 +110,7 @@
             <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white;">📝 가계부</button>
             <button id="btn-calendar" class="tab-btn" onclick="showSection('calendar')" style="background-color: #e8f5e9; color: #2e7d32;">📅 달력</button>
             <button id="btn-asset" class="tab-btn" onclick="showSection('asset')" style="background-color: #e8f5e9; color: #2e7d32;">🏦 자산</button>
+            <button id="btn-asset-history" class="tab-btn" onclick="showSection('asset-history')" style="background-color: #e8f5e9; color: #2e7d32;">💳 카드&은행별<br>입출금 내역</button>
         </div>
 
         <!-- ================= [가계부 섹션] ================= -->
@@ -270,6 +278,42 @@
                 <div id="asset-list-common"></div>
             </div>
         </div>
+
+        <!-- ================= [카드&은행별 입출금 내역 섹션] ================= -->
+        <div id="asset-history-section" style="display: none;">
+            <h2 style="color: #1b5e20; text-align: center; margin-bottom: 8px;">💳 카드&은행별 입출금 내역</h2>
+            <p style="text-align: center; font-size: 13px; color: #666; margin-top: 0; margin-bottom: 15px;">조회할 은행이나 카드를 선택하면 해당 계좌의 입출금 및 이체 내역을 볼 수 있습니다.</p>
+
+            <!-- 등록된 자산 선택 카드 목록 -->
+            <div id="history-asset-selector" class="asset-selector-grid"></div>
+
+            <!-- 날짜 지정 및 검색 필터 박스 -->
+            <div style="background: #f1f8e9; padding: 14px; border-radius: 8px; border: 1px solid #c5e1a5; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 13px; font-weight: bold; color: #2e7d32;">📅 조회 기간 지정</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button onclick="setHistoryDatePreset('thisMonth')" style="width: auto; padding: 4px 8px; margin: 0; background: #4caf50; font-size: 11px;">이번 달</button>
+                        <button onclick="setHistoryDatePreset('threeMonths')" style="width: auto; padding: 4px 8px; margin: 0; background: #66bb6a; font-size: 11px;">최근 3개월</button>
+                        <button onclick="setHistoryDatePreset('all')" style="width: auto; padding: 4px 8px; margin: 0; background: #757575; font-size: 11px;">전체 기간</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;">
+                    <input type="date" id="history-start-date" onchange="renderAssetHistorySection()" style="flex: 1; padding: 7px; font-size: 13px; background: white;">
+                    <span style="font-weight: bold; color: #2e7d32;">~</span>
+                    <input type="date" id="history-end-date" onchange="renderAssetHistorySection()" style="flex: 1; padding: 7px; font-size: 13px; background: white;">
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="history-search" oninput="renderAssetHistorySection()" placeholder="🔍 결제처, 항목, 메모 검색..." style="padding: 8px 10px; font-size: 14px; background: white;">
+                    <button onclick="document.getElementById('history-search').value=''; renderAssetHistorySection();" style="width: auto; padding: 8px 12px; margin: 0; background: #9e9e9e; font-size: 12px; white-space: nowrap;">초기화</button>
+                </div>
+            </div>
+
+            <!-- 선택된 자산 입출금 요약 박스 -->
+            <div id="history-asset-summary" style="background: #e8f5e9; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9; margin-bottom: 15px;"></div>
+
+            <!-- 선택된 자산 입출금 상세 목록 -->
+            <div id="history-transaction-list"></div>
+        </div>
     </div>
 </div>
 
@@ -315,26 +359,45 @@
     let favoriteRoutes = []; 
     let fixedExpenses = [];
     let monthlyBudget = 0;
+    let selectedHistoryAssetId = null;
 
     let currentCalYear = new Date().getFullYear();
     let currentCalMonth = new Date().getMonth();
 
+    function formatLocalDate(d) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
     const today = new Date();
-    document.getElementById('date').value = today.toISOString().substring(0, 10);
-    document.getElementById('filter-month').value = today.toISOString().substring(0, 7);
+    document.getElementById('date').value = formatLocalDate(today);
+    document.getElementById('filter-month').value = formatLocalDate(today).substring(0, 7);
+
+    // 기본 조회 기간을 이번 달로 초기화
+    (function initHistoryDates() {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        document.getElementById('history-start-date').value = formatLocalDate(firstDay);
+        document.getElementById('history-end-date').value = formatLocalDate(lastDay);
+    })();
 
     function showSection(section) {
-        const tabs = ['ledger', 'calendar', 'asset'];
+        const tabs = ['ledger', 'calendar', 'asset', 'asset-history'];
         tabs.forEach(t => {
             const btn = document.getElementById('btn-' + t);
             if (btn) { btn.style.backgroundColor = '#e8f5e9'; btn.style.color = '#2e7d32'; }
-            document.getElementById(t + '-section').style.display = 'none';
+            const sec = document.getElementById(t + '-section');
+            if (sec) sec.style.display = 'none';
         });
         const activeBtn = document.getElementById('btn-' + section);
         if (activeBtn) { activeBtn.style.backgroundColor = '#2e7d32'; activeBtn.style.color = 'white'; }
-        document.getElementById(section + '-section').style.display = 'block';
+        const activeSec = document.getElementById(section + '-section');
+        if (activeSec) activeSec.style.display = 'block';
 
         if (section === 'calendar') renderCalendar();
+        if (section === 'asset-history') renderAssetHistorySection();
     }
 
     // ==========================================
@@ -438,7 +501,8 @@
             allPayments = [];
             querySnapshot.forEach((doc) => { allPayments.push({ id: doc.id, ...doc.data() }); });
             renderList();
-            renderCalendar(); 
+            renderCalendar();
+            renderAssetHistorySection();
         });
 
         if (unsubAssets) unsubAssets();
@@ -456,6 +520,7 @@
             renderFixedExpenses();
             renderList(); 
             renderAssetScreen(bankTotal, investTotal, creditTotal, husbandTotal, wifeTotal, commonTotal);
+            renderAssetHistorySection();
         });
 
         if (unsubRoutes) unsubRoutes();
@@ -477,6 +542,202 @@
             monthlyBudget = doc.exists ? (Number(doc.data().monthlyBudget) || 0) : 0;
             renderList();
         });
+    }
+
+    // ==========================================
+    // [카드&은행별 입출금 내역 로직]
+    // ==========================================
+    function selectHistoryAsset(assetId) {
+        selectedHistoryAssetId = assetId;
+        renderAssetHistorySection();
+    }
+
+    function setHistoryDatePreset(preset) {
+        const startEl = document.getElementById('history-start-date');
+        const endEl = document.getElementById('history-end-date');
+        if (!startEl || !endEl) return;
+
+        const now = new Date();
+        if (preset === 'thisMonth') {
+            startEl.value = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+            endEl.value = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        } else if (preset === 'threeMonths') {
+            startEl.value = formatLocalDate(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+            endEl.value = formatLocalDate(now);
+        } else {
+            startEl.value = '';
+            endEl.value = '';
+        }
+        renderAssetHistorySection();
+    }
+
+    function renderAssetHistorySection() {
+        const selectorBox = document.getElementById('history-asset-selector');
+        const summaryBox = document.getElementById('history-asset-summary');
+        const listBox = document.getElementById('history-transaction-list');
+        if (!selectorBox || !summaryBox || !listBox) return;
+
+        if (allAssets.length === 0) {
+            selectorBox.innerHTML = '<div style="grid-column: span 2; text-align: center; color: #888; padding: 20px; background: #fafafa; border-radius: 8px;">등록된 은행 또는 카드가 없습니다. [🏦 자산] 탭에서 먼저 등록해 주세요.</div>';
+            summaryBox.innerHTML = '';
+            listBox.innerHTML = '';
+            return;
+        }
+
+        // 선택된 자산 유효성 확인 및 기본값 자동 선택
+        if (!selectedHistoryAssetId || !allAssets.find(a => a.id === selectedHistoryAssetId)) {
+            selectedHistoryAssetId = allAssets[0].id;
+        }
+
+        // 1. 자산 선택 버튼 목록 렌더링
+        selectorBox.innerHTML = '';
+        allAssets.forEach(asset => {
+            const isSelected = asset.id === selectedHistoryAssetId;
+            let typeIcon = '🏦';
+            if (asset.type === 'invest') typeIcon = '📈';
+            else if (asset.type === 'credit') typeIcon = '💳';
+
+            const amtColor = asset.amount < 0 ? '#d32f2f' : (asset.type === 'credit' ? '#d32f2f' : '#2e7d32');
+            const card = document.createElement('div');
+            card.className = 'asset-select-card' + (isSelected ? ' active' : '');
+            card.onclick = () => selectHistoryAsset(asset.id);
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 4px; font-size: 12px;">
+                    ${getOwnerBadgeHTML(asset.owner)}
+                    <span style="color: #666;">${typeIcon}</span>
+                </div>
+                <div style="font-weight: bold; font-size: 14px; color: #222; margin-bottom: 3px; word-break: keep-all;">${asset.name}</div>
+                <div style="font-size: 13px; font-weight: bold; color: ${amtColor};">${Number(asset.amount).toLocaleString()}원</div>
+            `;
+            selectorBox.appendChild(card);
+        });
+
+        // 2. 선택된 자산의 입출금 내역 필터링
+        const selectedAsset = allAssets.find(a => a.id === selectedHistoryAssetId);
+        const startDate = document.getElementById('history-start-date').value;
+        const endDate = document.getElementById('history-end-date').value;
+        const keyword = document.getElementById('history-search').value.trim().toLowerCase();
+
+        let totalIn = 0;
+        let totalOut = 0;
+        const matchedItems = [];
+
+        allPayments.forEach(data => {
+            // 해당 자산과 연관된 거래인지 판별 (일반 연결자산 OR 이체 출금/입금 자산)
+            let direction = null; // 'in' | 'out'
+            let badgeText = '';
+
+            if (data.type === 'transfer') {
+                if (data.toAssetId === selectedHistoryAssetId) {
+                    direction = 'in';
+                    badgeText = '이체입금';
+                } else if (data.fromAssetId === selectedHistoryAssetId) {
+                    direction = 'out';
+                    badgeText = '이체출금';
+                }
+            } else if (data.linkedAssetId === selectedHistoryAssetId) {
+                if (data.type === 'income') {
+                    direction = 'in';
+                    badgeText = '입금(수입)';
+                } else {
+                    direction = 'out';
+                    badgeText = '출금(지출)';
+                }
+            }
+
+            if (!direction) return;
+
+            // 날짜 필터
+            if (startDate && data.date < startDate) return;
+            if (endDate && data.date > endDate) return;
+
+            // 검색어 필터
+            const catName = data.category || '기타';
+            if (keyword !== '') {
+                const mText = (data.merchant || '').toLowerCase();
+                const cText = catName.toLowerCase();
+                const memoText = (data.memo || '').toLowerCase();
+                if (!mText.includes(keyword) && !cText.includes(keyword) && !memoText.includes(keyword)) return;
+            }
+
+            const amt = Number(data.amount) || 0;
+            if (direction === 'in') totalIn += amt;
+            else totalOut += amt;
+
+            matchedItems.push({ data, direction, badgeText, amt, catName });
+        });
+
+        // 3. 요약 박스 렌더링
+        const netAmt = totalIn - totalOut;
+        const netColor = netAmt >= 0 ? '#1565c0' : '#d32f2f';
+        const netSign = netAmt > 0 ? '+' : '';
+        const periodLabel = (startDate || endDate) ? `${startDate || '처음'} ~ ${endDate || '현재'}` : '전체 기간';
+
+        summaryBox.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #a5d6a7; padding-bottom: 8px; margin-bottom: 10px;">
+                <div style="font-size: 15px; font-weight: bold; color: #1b5e20; display: flex; align-items: center;">
+                    ${getOwnerBadgeHTML(selectedAsset.owner)}${selectedAsset.name}
+                </div>
+                <div style="font-size: 13px; color: #555;">현재 잔액: <strong style="color: #1b5e20;">${Number(selectedAsset.amount).toLocaleString()}원</strong></div>
+            </div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 10px;">조회 기준: ${periodLabel} (총 ${matchedItems.length}건)</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+                <div style="background: white; padding: 10px 6px; border-radius: 6px; border: 1px solid #bbdefb;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 4px;">➕ 입금 합계</div>
+                    <div style="font-size: 14px; font-weight: bold; color: #1976d2; word-break: break-all;">+${totalIn.toLocaleString()}원</div>
+                </div>
+                <div style="background: white; padding: 10px 6px; border-radius: 6px; border: 1px solid #ffcdd2;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 4px;">➖ 출금 합계</div>
+                    <div style="font-size: 14px; font-weight: bold; color: #d32f2f; word-break: break-all;">-${totalOut.toLocaleString()}원</div>
+                </div>
+                <div style="background: white; padding: 10px 6px; border-radius: 6px; border: 1px solid #c8e6c9;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 4px;">📊 기간 순변동</div>
+                    <div style="font-size: 14px; font-weight: bold; color: ${netColor}; word-break: break-all;">${netSign}${netAmt.toLocaleString()}원</div>
+                </div>
+            </div>
+        `;
+
+        // 4. 내역 리스트 렌더링
+        listBox.innerHTML = '';
+        if (matchedItems.length === 0) {
+            listBox.innerHTML = '<div style="text-align: center; color: #888; padding: 30px 10px; font-size: 14px; background: #fafafa; border-radius: 8px;">해당 조건에 맞는 입출금 내역이 없습니다.</div>';
+            return;
+        }
+
+        matchedItems.forEach(({ data, direction, badgeText, amt, catName }) => {
+            const isIn = direction === 'in';
+            const amountStr = isIn
+                ? `<strong style="color: #1976d2;">+ ${amt.toLocaleString()}원</strong>`
+                : `<strong style="color: #d32f2f;">- ${amt.toLocaleString()}원</strong>`;
+            const badgeStyle = isIn
+                ? 'background: #e3f2fd; color: #1976d2;'
+                : 'background: #ffebee; color: #d32f2f;';
+
+            const memoHtml = data.memo ? `<div style="font-size: 0.85em; color: #757575; margin-top: 4px;">📝 메모: ${data.memo}</div>` : '';
+
+            const itemDiv = document.createElement('div');
+            itemDiv.style = "padding: 12px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: #fafafa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;";
+            itemDiv.innerHTML = `
+                <div style="flex: 1;">
+                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">
+                        ${data.date} <span style="${badgeStyle} padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; font-weight: bold;">${badgeText}</span>
+                    </div>
+                    <div style="font-size: 1.05em; margin-bottom: 4px;"><strong>${data.merchant}</strong> - ${amountStr}</div>
+                    <div style="font-size: 0.9em; color: #555;">[항목] ${catName}</div>
+                    ${memoHtml}
+                </div>
+                <div style="display: flex; gap: 5px; flex-direction: column;">
+                    ${data.type !== 'transfer' ? `<button onclick="editFromHistory('${data.id}')" style="width: auto; padding: 6px 12px; background-color: #f57c00; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">수정</button>` : ''}
+                    <button onclick="deletePaymentItem('${data.id}')" style="width: auto; padding: 6px 12px; background-color: #d32f2f; font-size: 12px; margin-top: 0; color: white; border: none; border-radius: 4px;">삭제</button>
+                </div>
+            `;
+            listBox.appendChild(itemDiv);
+        });
+    }
+
+    function editFromHistory(id) {
+        showSection('ledger');
+        editDataById(id);
     }
 
     // ==========================================
@@ -557,7 +818,7 @@
         const item = fixedExpenses.find(f => f.id === id);
         if (!item) return;
 
-        const targetDate = document.getElementById('date').value || new Date().toISOString().substring(0, 10);
+        const targetDate = document.getElementById('date').value || formatLocalDate(new Date());
         const amountNum = Number(item.amount);
         const targetAsset = item.linkedAssetId ? allAssets.find(a => a.id === item.linkedAssetId) : null;
         const assetInfo = targetAsset ? `\n연결 자산: ${targetAsset.name} (잔액 차감)` : '';
@@ -791,7 +1052,7 @@
         document.getElementById('edit-buttons').style.display = "none";
         document.getElementById('merchant').value = ''; document.getElementById('amount').value = '';
         document.getElementById('category').value = ''; document.getElementById('linked-asset').value = '';
-        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+        document.getElementById('date').value = formatLocalDate(new Date());
         const msgBox = document.getElementById('smart-match-msg');
         if (msgBox) msgBox.style.display = 'none';
     }
