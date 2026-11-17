@@ -4,65 +4,91 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>우리집 가계부 & 자산</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
-    body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4fbf4; color: #333; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1 { color: #2e7d32; text-align: center; font-size: 24px; margin-bottom: 25px; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #4caf50; font-size: 14px;}
-    input, select { width: 100%; padding: 10px; border: 1px solid #c8e6c9; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
-    button { color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.2s; }
-    button:hover { opacity: 0.9; }
-    .excel-btn { background-color: #2e7d32; margin-bottom: 25px; }
-    #app-screen { display: none; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; background-color: #f2f4f7; color: #191f28; margin: 0; padding: 14px; line-height: 1.45; }
+    .container { max-width: 620px; margin: 0 auto; background: #ffffff; padding: 22px 18px; border-radius: 22px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.05); }
     
-    .tab-container { display: flex; margin-bottom: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #2e7d32; }
-    .tab-btn { margin: 0; border-radius: 0; flex: 1; font-size: 13px; padding: 10px 4px; line-height: 1.25; word-break: keep-all; border-right: 1px solid #c8e6c9; }
-    .tab-btn:last-child { border-right: none; }
+    /* 상단 헤더 & 탭 바 */
+    .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f2f4f6; }
+    .app-title { color: #1b5e20; font-size: 20px; font-weight: 800; margin: 0; letter-spacing: -0.4px; }
+    .user-bar { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 10px; margin-bottom: 16px; font-size: 12px; color: #4e5968; }
+    .mini-pill-btn { width: auto; padding: 4px 10px; margin: 0; font-size: 11px; font-weight: 600; border-radius: 99px; }
+
+    .tab-container { display: flex; gap: 6px; background: #f2f4f6; padding: 5px; border-radius: 14px; margin-bottom: 22px; border: none; }
+    .tab-btn { margin: 0; border-radius: 10px; flex: 1; font-size: 13px; font-weight: 700; padding: 10px 4px; line-height: 1.2; word-break: keep-all; border: none; box-shadow: none; }
+
+    /* 공통 카드 & 2열 폼 그리드 */
+    .section-card { background: #ffffff; border: 1px solid #e5e8eb; border-radius: 16px; padding: 18px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02); }
+    .section-card-blue { background: #f8fbff; border: 1px solid #d6e8ff; border-radius: 16px; padding: 18px; margin-bottom: 20px; }
+    .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .card-title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+    
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; margin-bottom: 5px; font-weight: 700; color: #333d4b; font-size: 12.5px; }
+    input, select { width: 100%; padding: 11px 12px; border: 1px solid #d9dfe6; border-radius: 10px; font-size: 16px; background: #fafbfc; color: #191f28; font-family: inherit; transition: all 0.15s ease; }
+    input:focus, select:focus { outline: none; border-color: #2e7d32; background: #ffffff; box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12); }
+
+    button { color: white; border: none; padding: 12px 16px; border-radius: 11px; cursor: pointer; font-size: 15px; font-weight: 700; width: 100%; margin-top: 8px; font-family: inherit; transition: transform 0.1s ease, opacity 0.15s ease; }
+    button:hover { opacity: 0.92; }
+    button:active { transform: scale(0.99); }
+    .sub-pill-box { background: #f8faf9; border: 1px solid #e6ede8; border-radius: 11px; padding: 10px 12px; margin-bottom: 14px; }
+    .sub-pill-box-blue { background: #ffffff; border: 1px solid #dcebfa; border-radius: 11px; padding: 10px 12px; margin-bottom: 12px; }
+
+    #app-screen { display: none; }
 
     /* 달력 디자인 */
-    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .calendar-day-header { text-align: center; font-weight: bold; background: #e8f5e9; padding: 8px 0; border-radius: 4px; font-size: 13px; color: #2e7d32; }
-    .calendar-cell { min-height: 75px; border: 1px solid #c8e6c9; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; background: white; cursor: pointer; transition: background-color 0.15s; }
-    .calendar-cell:hover { background-color: #f1f8e9; }
-    .calendar-cell.empty { background: #f9f9f9; border: 1px dashed #e0e0e0; cursor: default; }
-    .calendar-cell.empty:hover { background: #f9f9f9; }
-    .calendar-date { font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #555; }
-    .calendar-item { padding: 4px; border-radius: 4px; margin-bottom: 3px; font-size: 10px; line-height: 1.2; overflow: hidden; word-break: break-all; }
-    .cal-income { background: #e3f2fd; color: #1565c0; border-left: 2px solid #1976d2; }
-    .cal-expense { background: #ffebee; color: #c62828; border-left: 2px solid #d32f2f; }
-    .sunday { color: #d32f2f !important; }
-    .saturday { color: #1976d2 !important; }
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #f8f9fa; padding: 8px 12px; border-radius: 12px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .calendar-day-header { text-align: center; font-weight: 700; background: #f2f4f6; padding: 7px 0; border-radius: 8px; font-size: 12px; color: #4e5968; }
+    .calendar-cell { min-height: 76px; border: 1px solid #eaedf0; border-radius: 10px; padding: 5px; display: flex; flex-direction: column; background: #ffffff; cursor: pointer; transition: all 0.15s; }
+    .calendar-cell:hover { background-color: #f4fbf5; border-color: #a5d6a7; }
+    .calendar-cell.empty { background: #fafbfc; border: 1px dashed #e5e8eb; cursor: default; }
+    .calendar-cell.empty:hover { background: #fafbfc; border-color: #e5e8eb; }
+    .calendar-date { font-weight: 700; font-size: 12.5px; margin-bottom: 4px; color: #333d4b; }
+    .calendar-item { padding: 3px 4px; border-radius: 5px; margin-bottom: 2px; font-size: 10px; line-height: 1.2; overflow: hidden; word-break: break-all; }
+    .cal-income { background: #e8f3ff; color: #1b64da; border-left: 2px solid #3182f6; }
+    .cal-expense { background: #ffebee; color: #d32f2f; border-left: 2px solid #f04452; }
+    .sunday { color: #f04452 !important; }
+    .saturday { color: #3182f6 !important; }
 
     /* 소유자 뱃지 스타일 */
-    .owner-badge-husband { background-color: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #90caf9;}
-    .owner-badge-wife { background-color: #fce4ec; color: #c2185b; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #f48fb1;}
-    .owner-badge-common { background-color: #f5f5f5; color: #616161; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #bdbdbd;}
+    .owner-badge-husband { background-color: #e8f3ff; color: #1b64da; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; font-weight: 700; }
+    .owner-badge-wife { background-color: #ffeef4; color: #d6336c; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; font-weight: 700; }
+    .owner-badge-common { background-color: #f2f4f6; color: #4e5968; padding: 2px 6px; border-radius: 5px; font-size: 11px; margin-right: 5px; font-weight: 700; }
 
-  /* 최근 입력어 및 전체 자동완성 드롭다운 */
+    /* 최근 입력어 및 전체 자동완성 드롭다운 */
     #merchant-group, #category-group { position: relative; }
-    .recent-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #81c784; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); z-index: 1000; max-height: 230px; overflow-y: auto; }
-    .recent-dropdown-header { font-size: 11px; color: #2e7d32; background: #f1f8e9; padding: 5px 10px; font-weight: bold; border-bottom: 1px solid #e8f5e9; position: sticky; top: 0; }
-    .recent-dropdown-sub { font-size: 11px; color: #1565c0; background: #e3f2fd; padding: 4px 10px; font-weight: bold; border-top: 1px solid #bbdefb; border-bottom: 1px solid #bbdefb; }
-    .recent-item { padding: 9px 12px; font-size: 14px; color: #333; cursor: pointer; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; justify-content: space-between; }
+    .recent-dropdown { display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: white; border: 1px solid #81c784; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); z-index: 1000; max-height: 230px; overflow-y: auto; }
+    .recent-dropdown-header { font-size: 11px; color: #2e7d32; background: #f1f8e9; padding: 6px 12px; font-weight: 700; border-bottom: 1px solid #e8f5e9; position: sticky; top: 0; }
+    .recent-dropdown-sub { font-size: 11px; color: #1565c0; background: #e3f2fd; padding: 5px 12px; font-weight: 700; border-top: 1px solid #bbdefb; border-bottom: 1px solid #bbdefb; }
+    .recent-item { padding: 10px 12px; font-size: 14px; color: #191f28; cursor: pointer; border-bottom: 1px solid #f2f4f6; display: flex; align-items: center; justify-content: space-between; }
     .recent-item:last-child { border-bottom: none; }
-    .recent-item:hover { background-color: #e8f5e9; color: #1b5e20; font-weight: bold; }
+    .recent-item:hover { background-color: #f1f8e9; color: #1b5e20; font-weight: 700; }
 
-    /* 예산 게이지 바 */
-    .budget-box { background: white; padding: 12px; border-radius: 8px; border: 1px solid #c8e6c9; margin-bottom: 15px; }
-    .budget-bar-bg { width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 8px 0; }
-    .budget-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background-color 0.3s ease; }
+    /* 예산 게이지 바 & 요약 박스 */
+    #summary-box { background-color: #f8faf9 !important; border: 1px solid #e2ece5; border-radius: 14px !important; padding: 16px !important; }
+    .budget-box { background: white; padding: 13px; border-radius: 12px; border: 1px solid #e5e8eb; margin-bottom: 14px; }
+    .budget-bar-bg { width: 100%; height: 10px; background-color: #eaedf0; border-radius: 99px; overflow: hidden; margin: 8px 0; }
+    .budget-bar-fill { height: 100%; border-radius: 99px; transition: width 0.3s ease, background-color 0.3s ease; }
+
+    /* 내역 리스트 카드 업그레이드 */
+    #payment-list > div, #history-transaction-list > div { background: #ffffff !important; border: 1px solid #eaedf0 !important; border-radius: 12px !important; padding: 14px !important; margin-bottom: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+
+    /* 자산 소유자별 반응형 그리드 (PC 2열 / 모바일 1열 자동 정렬) */
+    .asset-owner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
 
     /* 카드&은행별 입출금 내역 버튼 그리드 */
-    .asset-selector-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
-    .asset-select-card { background: #fafafa; border: 1px solid #c8e6c9; border-radius: 8px; padding: 10px; cursor: pointer; transition: 0.15s; text-align: left; }
-    .asset-select-card:hover { background: #f1f8e9; }
-    .asset-select-card.active { background: #e8f5e9; border: 2px solid #2e7d32; box-shadow: 0 2px 6px rgba(46,125,50,0.15); }
+    .asset-selector-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+    .asset-select-card { background: #ffffff; border: 1px solid #e5e8eb; border-radius: 12px; padding: 12px; cursor: pointer; transition: 0.15s; text-align: left; }
+    .asset-select-card:hover { background: #f8faf9; border-color: #a5d6a7; }
+    .asset-select-card.active { background: #f1f8e9; border: 2px solid #2e7d32; box-shadow: 0 4px 10px rgba(46,125,50,0.1); }
 
     /* 달력 상세 팝업 모달 */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
-    .modal-content { background: white; width: 100%; max-width: 480px; border-radius: 12px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); max-height: 85vh; display: flex; flex-direction: column; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); z-index: 2000; justify-content: center; align-items: center; padding: 15px; }
+    .modal-content { background: white; width: 100%; max-width: 460px; border-radius: 18px; padding: 20px; box-shadow: 0 12px 32px rgba(0,0,0,0.18); max-height: 85vh; display: flex; flex-direction: column; }
     .modal-body { overflow-y: auto; flex: 1; margin: 12px 0; }
 </style>
 <!-- 파이어베이스 연결 도구 -->
@@ -72,23 +98,29 @@
 </head>
 <body>
 <div class="container">
-    <h1>우리집 가계부 🏡</h1>
+   <div class="app-header">
+        <h1 class="app-title">우리집 가계부 🏡</h1>
+        <span style="font-size: 11px; color: #2e7d32; background: #e8f5e9; padding: 4px 9px; border-radius: 99px; font-weight: 700;">가계 & 자산 통합관리</span>
+    </div>
 
     <!-- 1. 로그인/회원가입 화면 -->
     <div id="login-screen">
-        <div style="background: #f1f8e9; padding: 15px; border-radius: 8px; border: 1px solid #c5e1a5; margin-bottom: 20px;">
-            <p style="text-align: center; color: #33691e; font-size: 14px; margin-top: 0; font-weight: bold;">개인 계정 로그인 및 회원가입</p>
-            <input type="email" id="email" placeholder="이메일 주소 (예: my@email.com)" style="margin-bottom: 10px;">
-            <input type="password" id="pw" placeholder="비밀번호 (6자리 이상)">
-            
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button onclick="login()" style="flex: 1; background-color: #4caf50;">로그인</button>
-                <button onclick="signup()" style="flex: 1; background-color: #ff9800;">새로 회원가입</button>
+        <div class="section-card" style="background: #f8faf9; margin-bottom: 0;">
+            <p style="text-align: center; color: #1b5e20; font-size: 15px; margin-top: 0; margin-bottom: 16px; font-weight: 800;">개인 계정 로그인 및 회원가입</p>
+            <div class="form-group">
+                <input type="email" id="email" placeholder="이메일 주소 (예: my@email.com)">
+            </div>
+            <div class="form-group">
+                <input type="password" id="pw" placeholder="비밀번호 (6자리 이상)">
             </div>
             
-            <!-- 비밀번호 찾기 버튼 -->
-            <div style="margin-top: 15px; text-align: center;">
-                <span onclick="resetPassword()" style="font-size: 13px; color: #1565c0; cursor: pointer; text-decoration: underline; font-weight: bold;">비밀번호를 잊으셨나요?</span>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button onclick="login()" style="flex: 1; background-color: #2e7d32; margin-top: 0;">로그인</button>
+                <button onclick="signup()" style="flex: 1; background-color: #ff9800; margin-top: 0;">새로 회원가입</button>
+            </div>
+            
+            <div style="margin-top: 14px; text-align: center;">
+                <span onclick="resetPassword()" style="font-size: 13px; color: #1565c0; cursor: pointer; text-decoration: underline; font-weight: 600;">비밀번호를 잊으셨나요?</span>
             </div>
         </div>
     </div>
@@ -96,11 +128,11 @@
     <!-- 2. 메인 앱 화면 -->
     <div id="app-screen">
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 14px; color: #555;">로그인 계정: <strong id="user-email-display"></strong></div>
+        <div class="user-bar">
+            <div>👤 <strong id="user-email-display" style="color: #191f28;"></strong></div>
             <div style="display: flex; gap: 5px;">
-                <button onclick="logout()" style="width: auto; padding: 6px 12px; margin: 0; background-color: #9e9e9e; font-size: 12px; border-radius: 20px;">로그아웃</button>
-                <button onclick="deleteAccount()" style="width: auto; padding: 6px 12px; margin: 0; background-color: #d32f2f; font-size: 12px; border-radius: 20px;">회원탈퇴</button>
+                <button onclick="logout()" class="mini-pill-btn" style="background-color: #8b95a1;">로그아웃</button>
+                <button onclick="deleteAccount()" class="mini-pill-btn" style="background-color: #f04452;">회원탈퇴</button>
             </div>
         </div>
 
@@ -108,107 +140,126 @@
             <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white;">📝 가계부</button>
             <button id="btn-calendar" class="tab-btn" onclick="showSection('calendar')" style="background-color: #e8f5e9; color: #2e7d32;">📅 달력</button>
             <button id="btn-asset" class="tab-btn" onclick="showSection('asset')" style="background-color: #e8f5e9; color: #2e7d32;">🏦 자산</button>
-            <button id="btn-asset-history" class="tab-btn" onclick="showSection('asset-history')" style="background-color: #e8f5e9; color: #2e7d32;">💳 카드&은행별<br>입출금 내역</button>
+            <button id="btn-asset-history" class="tab-btn" onclick="showSection('asset-history')" style="background-color: #e8f5e9; color: #2e7d32;">💳 계좌내역</button>
         </div>
 
         <!-- ================= [가계부 섹션] ================= -->
         <div id="ledger-section">
-            <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
             
-            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 25px; margin-bottom: 25px; border: 1px solid #90caf9;">
-                <h3 style="margin-top: 0; color: #1565c0; font-size: 16px; margin-bottom: 12px;">🔄 자산 이체 (카드 대금 결제)</h3>
-                
-                <!-- 고정 이체 원클릭 영역 -->
-                <div style="margin-bottom: 12px;">
-                    <div style="font-size: 12px; color: #0d47a1; font-weight: bold; margin-bottom: 5px;">📌 고정 이체 원클릭 실행 (클릭 시 선택된 날짜로 즉시 이체)</div>
-                    <div id="fixed-transfers-container" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+            <!-- 1. 가장 자주 쓰는 수입/지출 입력 카드 최상단 배치 -->
+            <div id="ledger-input-box" class="section-card">
+                <div class="card-title-row">
+                    <h3 class="card-title" style="color: #1b5e20;">💸 수입 / 지출 입력</h3>
+                    <span style="font-size: 11px; color: #6b7684;">날짜 · 자산 연동 기록</span>
                 </div>
-
-                <!-- 즐겨찾기 이체 구간 영역 -->
-                <div style="margin-bottom: 15px;">
-                    <div style="font-size: 12px; color: #1976d2; font-weight: bold; margin-bottom: 5px;">⭐ 즐겨찾기 이체 구간 (클릭 시 출금/입금 자산 선택)</div>
-                    <div id="favorite-routes-container" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
-                    <select id="transfer-from" style="flex: 1; font-size: 13px;"><option value="">출금 자산 선택</option></select>
-                    <span style="color: #1565c0; font-weight: bold;">➡</span>
-                    <select id="transfer-to" style="flex: 1; font-size: 13px;"><option value="">입금 자산 선택</option></select>
-                </div>
-                <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-                    <input type="number" id="transfer-amount" placeholder="이체 금액 (예: 200000)" style="flex: 1; border: 1px solid #90caf9;">
-                    <button onclick="saveFavoriteRoute()" style="flex: 1; background-color: #64b5f6; margin-top: 0; padding: 10px; font-size: 13px;">⭐ 현재 구간 저장</button>
-                </div>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="transfer-memo" placeholder="이체 메모 (예: 매달 적금)" style="flex: 2; border: 1px solid #90caf9;">
-                    <button onclick="transferAsset()" style="flex: 1; background-color: #1565c0; margin-top: 0; padding: 10px; font-size: 14px;">이체 실행</button>
-                </div>
-                <button onclick="saveFixedTransfer()" style="background-color: #1e88e5; font-size: 13px; padding: 9px; margin-top: 8px;">⭐ 현재 입력내용 고정이체로 저장 (별칭 지정)</button>
-            </div>
-
-            <div id="ledger-input-box" style="background-color: #f1f8e9; padding: 15px; border-radius: 8px; border: 1px solid #c5e1a5; margin-bottom: 25px;">
-                <h3 style="margin-top: 0; color: #33691e; font-size: 16px; margin-bottom: 12px;">💸 수입 / 지출 입력</h3>
                 
                 <!-- 고정 지출 원클릭 영역 -->
-                <div style="margin-bottom: 15px;">
-                    <div style="font-size: 12px; color: #2e7d32; font-weight: bold; margin-bottom: 6px;">📌 고정 지출 원클릭 등록 (클릭 시 선택된 날짜로 즉시 입력)</div>
-                    <div id="fixed-expenses-container" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                <div class="sub-pill-box">
+                    <div style="font-size: 12px; color: #2e7d32; font-weight: 700; margin-bottom: 6px;">📌 고정 지출 원클릭 등록 (클릭 시 선택된 날짜로 즉시 입력)</div>
+                    <div id="fixed-expenses-container" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>날짜</label>
-                    <input type="date" id="date">
+                <!-- 1행: 날짜 + 연결 자산 -->
+                <div class="form-row">
+                    <div>
+                        <label>📅 날짜</label>
+                        <input type="date" id="date">
+                    </div>
+                    <div>
+                        <label style="color: #1b5e20;">🔗 연결 자산</label>
+                        <select id="linked-asset">
+                            <option value="">선택 안 함 (기록만)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group" style="background: #e8f5e9; padding: 10px; border-radius: 5px;">
-                    <label style="color: #1b5e20;">🔗 연결 자산 (어디로 들어오고 나가나요?)</label>
-                    <select id="linked-asset" style="border: 1px solid #a5d6a7;">
-                        <option value="">선택 안 함 (가계부 내역만 기록)</option>
-                    </select>
+
+                <!-- 2행: 결제처 + 금액 -->
+                <div class="form-row">
+                    <div id="merchant-group">
+                        <label>🏪 결제처</label>
+                        <input type="text" id="merchant" placeholder="예: 네이버페이, 월급">
+                        <div id="merchant-recent-box" class="recent-dropdown"></div>
+                    </div>
+                    <div>
+                        <label>💰 금액</label>
+                        <input type="number" id="amount" placeholder="예: 25000">
+                    </div>
                 </div>
-                <div class="form-group" id="merchant-group">
-                    <label>결제처</label>
-                    <input type="text" id="merchant" placeholder="예: 네이버페이, 월급 통장">
-                    <div id="merchant-recent-box" class="recent-dropdown"></div>
-                    <div id="smart-match-msg" style="font-size: 12px; color: #2e7d32; margin-top: 5px; display: none;"></div>
-                </div>
-                <div class="form-group">
-                    <label>금액</label>
-                    <input type="number" id="amount" placeholder="예: 25000">
-                </div>
-                <div class="form-group" id="category-group" style="margin-bottom: 0;">
-                    <label>항목</label>
+                <div id="smart-match-msg" style="font-size: 12px; color: #2e7d32; margin-top: -6px; margin-bottom: 10px; display: none;"></div>
+
+                <!-- 3행: 항목 -->
+                <div class="form-group" id="category-group" style="margin-bottom: 14px;">
+                    <label>🏷️ 항목</label>
                     <input type="text" id="category" placeholder="예: 식비, 주유비, 월급 등">
                     <div id="category-recent-box" class="recent-dropdown"></div>
                 </div>
                 
-                <div id="input-buttons" style="display: flex; gap: 10px;">
-                    <button onclick="saveData('expense')" style="flex: 1; background-color: #d32f2f;">지출 입력</button>
-                    <button onclick="saveData('income')" style="flex: 1; background-color: #1976d2;">수입 입력</button>
+                <div id="input-buttons" style="display: flex; gap: 8px;">
+                    <button onclick="saveData('expense')" style="flex: 1; background-color: #f04452; margin-top: 0;">➖ 지출 입력</button>
+                    <button onclick="saveData('income')" style="flex: 1; background-color: #3182f6; margin-top: 0;">➕ 수입 입력</button>
                 </div>
-                <button id="save-fixed-btn" onclick="saveFixedExpense()" style="background-color: #66bb6a; font-size: 13px; padding: 9px; margin-top: 8px;">⭐ 현재 입력내용 고정지출로 저장</button>
+                <button id="save-fixed-btn" onclick="saveFixedExpense()" style="background-color: #f1f8e9; color: #2e7d32; border: 1px solid #a5d6a7; font-size: 13px; padding: 10px; margin-top: 8px;">⭐ 현재 입력내용 고정지출로 저장 (별칭 지정)</button>
 
-                <div id="edit-buttons" style="display: none; gap: 10px;">
-                    <button onclick="saveData('expense')" style="flex: 1; background-color: #d32f2f;">지출로 수정</button>
-                    <button onclick="saveData('income')" style="flex: 1; background-color: #1976d2;">수입으로 수정</button>
-                    <button onclick="cancelEdit()" style="flex: 1; background-color: #9e9e9e;">취소</button>
+                <div id="edit-buttons" style="display: none; gap: 8px;">
+                    <button onclick="saveData('expense')" style="flex: 1; background-color: #f04452; margin-top: 0;">지출로 수정</button>
+                    <button onclick="saveData('income')" style="flex: 1; background-color: #3182f6; margin-top: 0;">수입으로 수정</button>
+                    <button onclick="cancelEdit()" style="flex: 1; background-color: #8b95a1; margin-top: 0;">취소</button>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px;">
-                <h2 style="color: #2e7d32; margin: 0; font-size: 18px;">결제 목록 요약</h2>
+            <!-- 2. 자산 이체 카드 -->
+            <div class="section-card-blue">
+                <div class="card-title-row">
+                    <h3 class="card-title" style="color: #1565c0;">🔄 자산 이체 (계좌 이동 · 카드대금)</h3>
+                </div>
+                
+                <!-- 고정 이체 원클릭 영역 -->
+                <div class="sub-pill-box-blue">
+                    <div style="font-size: 12px; color: #0d47a1; font-weight: 700; margin-bottom: 5px;">📌 고정 이체 원클릭 실행 (클릭 시 선택된 날짜로 즉시 이체)</div>
+                    <div id="fixed-transfers-container" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                </div>
+
+                <!-- 즐겨찾기 이체 구간 영역 -->
+                <div class="sub-pill-box-blue">
+                    <div style="font-size: 12px; color: #1976d2; font-weight: 700; margin-bottom: 5px;">⭐ 즐겨찾기 이체 구간 (클릭 시 출금/입금 자산 선택)</div>
+                    <div id="favorite-routes-container" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: center;">
+                    <select id="transfer-from" style="flex: 1; font-size: 14px; background: white;"><option value="">출금 자산 선택</option></select>
+                    <span style="color: #1565c0; font-weight: 800;">➡</span>
+                    <select id="transfer-to" style="flex: 1; font-size: 14px; background: white;"><option value="">입금 자산 선택</option></select>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <input type="number" id="transfer-amount" placeholder="이체 금액 (예: 200000)" style="flex: 1.4; background: white;">
+                    <button onclick="saveFavoriteRoute()" style="flex: 1; background-color: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; margin-top: 0; padding: 10px; font-size: 13px;">⭐ 구간만 저장</button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="transfer-memo" placeholder="이체 메모 (예: 매달 적금)" style="flex: 1.6; background: white;">
+                    <button onclick="transferAsset()" style="flex: 1; background-color: #1565c0; margin-top: 0; padding: 10px; font-size: 14px;">이체 실행</button>
+                </div>
+                <button onclick="saveFixedTransfer()" style="background-color: #ffffff; color: #1565c0; border: 1px solid #90caf9; font-size: 13px; padding: 10px; margin-top: 8px;">⭐ 현재 입력내용 고정이체로 저장 (별칭 지정)</button>
+            </div>
+
+            <!-- 3. 결제 목록 요약 및 엑셀 저장 바 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e8eb;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2 style="color: #191f28; margin: 0; font-size: 18px; font-weight: 800;">결제 목록 요약</h2>
+                    <button onclick="exportExcel()" style="width: auto; padding: 5px 10px; margin: 0; background-color: #2e7d32; font-size: 12px; border-radius: 8px;">📥 엑셀 저장</button>
+                </div>
                 <div style="display: flex; gap: 5px; align-items: center;">
-                    <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 5px; font-size: 14px; margin: 0; border: 1px solid #a5d6a7;">
-                    <button onclick="document.getElementById('filter-month').value=''; currentCategoryFilter=null; renderList();" style="width: auto; padding: 6px 10px; margin: 0; background-color: #757575; font-size: 12px;">전체</button>
+                    <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 6px 8px; font-size: 13px; margin: 0;">
+                    <button onclick="document.getElementById('filter-month').value=''; currentCategoryFilter=null; renderList();" style="width: auto; padding: 7px 10px; margin: 0; background-color: #8b95a1; font-size: 12px; border-radius: 8px;">전체</button>
                 </div>
             </div>
 
             <!-- 결제 내역 키워드 검색창 -->
-            <div style="display: flex; gap: 5px; margin-top: 12px;">
-                <input type="text" id="search-keyword" oninput="renderList()" placeholder="🔍 결제처, 항목, 메모 검색..." style="padding: 8px 12px; font-size: 14px; border: 1px solid #a5d6a7; background: #f9fdf9;">
-                <button onclick="document.getElementById('search-keyword').value=''; renderList();" style="width: auto; padding: 8px 12px; margin: 0; background-color: #9e9e9e; font-size: 12px; white-space: nowrap;">초기화</button>
+            <div style="display: flex; gap: 6px; margin-top: 12px;">
+                <input type="text" id="search-keyword" oninput="renderList()" placeholder="🔍 결제처, 항목, 메모 검색..." style="padding: 9px 12px; font-size: 14px;">
+                <button onclick="document.getElementById('search-keyword').value=''; renderList();" style="width: auto; padding: 9px 13px; margin: 0; background-color: #8b95a1; font-size: 12px; white-space: nowrap; border-radius: 10px;">초기화</button>
             </div>
             
-            <div id="summary-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 12px; margin-bottom: 15px;"></div>
+            <div id="summary-box" style="margin-top: 12px; margin-bottom: 14px;"></div>
             <div id="payment-list"></div>
         </div>
 
@@ -235,57 +286,64 @@
 
         <!-- ================= [자산 섹션] ================= -->
         <div id="asset-section" style="display: none;">
-            <h2 style="color: #1b5e20; text-align: center; margin-bottom: 25px;">현재 우리집 자산 기록하기</h2>
-            
-            <div style="background-color: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fff59d; margin-bottom: 20px;">
-                <div class="form-group" style="margin-bottom: 10px;">
-                    <label style="color: #f57f17;">👨‍👩‍👧 소유자 (누구의 자산인가요?)</label>
-                    <select id="asset-owner" style="border: 1px solid #fff59d; background: white;">
-                        <option value="husband">👨 남편</option>
-                        <option value="wife">👩 아내</option>
-                        <option value="common">🏡 공동/기타</option>
-                    </select>
+            <div class="section-card">
+                <div class="card-title-row">
+                    <h3 class="card-title" style="color: #1b5e20;">🏦 우리집 자산 등록 / 수정</h3>
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
-                    <label>분류</label>
-                    <select id="asset-type">
-                        <option value="bank">🏦 은행 (예금, 적금, 현금 등)</option>
-                        <option value="invest">📈 투자 (주식, 펀드, 코인 등)</option>
-                        <option value="credit">💳 신용카드 (카드대금 등)</option>
-                    </select>
+                
+                <div class="form-row">
+                    <div>
+                        <label>👨‍👩‍👧 소유자</label>
+                        <select id="asset-owner">
+                            <option value="husband">👨 남편</option>
+                            <option value="wife">👩 아내</option>
+                            <option value="common">🏡 공동/기타</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>📂 분류</label>
+                        <select id="asset-type">
+                            <option value="bank">🏦 은행 (예금·적금)</option>
+                            <option value="invest">📈 투자 (주식·펀드)</option>
+                            <option value="credit">💳 신용카드 (대금)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
-                    <label>자산명 (어디에 있나요? / 어떤 카드인가요?)</label>
-                    <input type="text" id="asset-name" placeholder="예: 우리은행, 삼성전자, 현대카드">
+
+                <div class="form-row" style="margin-bottom: 14px;">
+                    <div>
+                        <label>🏷️ 자산명</label>
+                        <input type="text" id="asset-name" placeholder="예: 우리은행, 현대카드">
+                    </div>
+                    <div>
+                        <label>💰 잔액 및 금액</label>
+                        <input type="number" id="asset-amount" placeholder="예: 0">
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>잔액 및 금액</label>
-                    <input type="number" id="asset-amount" placeholder="예: 0">
+
+                <div style="display: flex; gap: 8px;">
+                    <button id="saveAssetBtn" onclick="saveAssetData()" style="background-color: #1b5e20; margin-top: 0;">자산 추가하기</button>
+                    <button id="cancelAssetEditBtn" onclick="cancelAssetEdit()" style="display: none; background-color: #8b95a1; margin-top: 0;">수정 취소</button>
                 </div>
             </div>
 
-            <div style="display: flex; gap: 10px;">
-                <button id="saveAssetBtn" onclick="saveAssetData()" style="background-color: #1b5e20;">자산 추가하기</button>
-                <button id="cancelAssetEditBtn" onclick="cancelAssetEdit()" style="display: none; background-color: #9e9e9e;">수정 취소</button>
-            </div>
-
-            <div id="asset-summary" style="background-color: #e8f5e9; padding: 25px 15px; border-radius: 8px; margin-top: 30px; text-align: center; border: 2px solid #c8e6c9;"></div>
+            <div id="asset-summary" style="background-color: #f4fbf5; padding: 22px 15px; border-radius: 16px; margin-bottom: 24px; text-align: center; border: 1px solid #c8e6c9;"></div>
             
-            <h2 style="color: #2e7d32; margin-top: 30px; border-bottom: 2px solid #c8e6c9; padding-bottom: 10px; font-size: 18px;">자산 상세 목록</h2>
+            <h2 style="color: #191f28; margin-top: 0; border-bottom: 2px solid #e5e8eb; padding-bottom: 10px; font-size: 18px; font-weight: 800;">자산 상세 목록</h2>
             
-            <div style="display: flex; gap: 15px; margin-top: 15px; align-items: flex-start;">
-                <div style="flex: 1; background: #f8fbff; padding: 15px; border-radius: 8px; border: 1px solid #bbdefb;">
-                    <h3 style="margin-top: 0; color: #1565c0; font-size: 15px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 10px;">👨 남편 자산</h3>
+            <div class="asset-owner-grid">
+                <div style="background: #f8fbff; padding: 14px; border-radius: 14px; border: 1px solid #d6e8ff;">
+                    <h3 style="margin-top: 0; color: #1b64da; font-size: 15px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 10px;">👨 남편 자산</h3>
                     <div id="asset-list-husband"></div>
                 </div>
-                <div style="flex: 1; background: #fffcfd; padding: 15px; border-radius: 8px; border: 1px solid #f8bbd0;">
-                    <h3 style="margin-top: 0; color: #c2185b; font-size: 15px; text-align: center; border-bottom: 1px dashed #f48fb1; padding-bottom: 10px;">👩 아내 자산</h3>
+                <div style="background: #fff9fb; padding: 14px; border-radius: 14px; border: 1px solid #ffd6e5;">
+                    <h3 style="margin-top: 0; color: #d6336c; font-size: 15px; text-align: center; border-bottom: 1px dashed #f48fb1; padding-bottom: 10px;">👩 아내 자산</h3>
                     <div id="asset-list-wife"></div>
                 </div>
             </div>
             
-            <div style="margin-top: 15px; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;">
-                <h3 style="margin-top: 0; color: #616161; font-size: 15px; text-align: center; border-bottom: 1px dashed #bdbdbd; padding-bottom: 10px;">🏡 공동 및 기타 자산</h3>
+            <div style="margin-top: 12px; background: #f8f9fa; padding: 14px; border-radius: 14px; border: 1px solid #e5e8eb;">
+                <h3 style="margin-top: 0; color: #4e5968; font-size: 15px; text-align: center; border-bottom: 1px dashed #ced4da; padding-bottom: 10px;">🏡 공동 및 기타 자산</h3>
                 <div id="asset-list-common"></div>
             </div>
         </div>
