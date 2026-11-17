@@ -90,7 +90,14 @@
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); z-index: 2000; justify-content: center; align-items: center; padding: 15px; }
     .modal-content { background: white; width: 100%; max-width: 460px; border-radius: 18px; padding: 20px; box-shadow: 0 12px 32px rgba(0,0,0,0.18); max-height: 85vh; display: flex; flex-direction: column; }
     .modal-body { overflow-y: auto; flex: 1; margin: 12px 0; }
+
+    /* 자산 카드 드래그 앤 드롭 스타일 */
+    .drag-handle { cursor: grab; color: #9aa5b1; font-size: 16px; font-weight: bold; padding: 2px 6px 2px 0; user-select: none; touch-action: none; display: inline-flex; align-items: center; }
+    .drag-handle:active { cursor: grabbing; color: #2e7d32; }
+    .sortable-ghost { opacity: 0.4; background: #e8f5e9 !important; border: 2px dashed #4caf50 !important; }
+    .sortable-chosen { box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14) !important; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <!-- 파이어베이스 연결 도구 -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
@@ -329,29 +336,34 @@
 
             <div id="asset-summary" style="background-color: #f4fbf5; padding: 22px 15px; border-radius: 16px; margin-bottom: 24px; text-align: center; border: 1px solid #c8e6c9;"></div>
             
-            <h2 style="color: #191f28; margin-top: 0; border-bottom: 2px solid #e5e8eb; padding-bottom: 10px; font-size: 18px; font-weight: 800;">자산 상세 목록</h2>
+           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e8eb; padding-bottom: 10px; flex-wrap: wrap; gap: 4px;">
+                <h2 style="color: #191f28; margin: 0; font-size: 18px; font-weight: 800;">자산 상세 목록</h2>
+                <span style="font-size: 11.5px; color: #6b7684;">⋮⋮ 손잡이를 드래그해 순서·소유자 변경</span>
+            </div>
             
             <div class="asset-owner-grid">
                 <div style="background: #f8fbff; padding: 14px; border-radius: 14px; border: 1px solid #d6e8ff;">
                     <h3 style="margin-top: 0; color: #1b64da; font-size: 15px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 10px;">👨 남편 자산</h3>
-                    <div id="asset-list-husband"></div>
+                    <div id="asset-list-husband" style="min-height: 48px;"></div>
                 </div>
                 <div style="background: #fff9fb; padding: 14px; border-radius: 14px; border: 1px solid #ffd6e5;">
                     <h3 style="margin-top: 0; color: #d6336c; font-size: 15px; text-align: center; border-bottom: 1px dashed #f48fb1; padding-bottom: 10px;">👩 아내 자산</h3>
-                    <div id="asset-list-wife"></div>
+                    <div id="asset-list-wife" style="min-height: 48px;"></div>
                 </div>
             </div>
             
             <div style="margin-top: 12px; background: #f8f9fa; padding: 14px; border-radius: 14px; border: 1px solid #e5e8eb;">
                 <h3 style="margin-top: 0; color: #4e5968; font-size: 15px; text-align: center; border-bottom: 1px dashed #ced4da; padding-bottom: 10px;">🏡 공동 및 기타 자산</h3>
-                <div id="asset-list-common"></div>
+                <div id="asset-list-common" style="min-height: 48px;"></div>
             </div>
         </div>
 
         <!-- ================= [카드&은행별 입출금 내역 섹션] ================= -->
         <div id="asset-history-section" style="display: none;">
-            <h2 style="color: #1b5e20; text-align: center; margin-bottom: 8px;">💳 카드&은행별 입출금 내역</h2>
-            <p style="text-align: center; font-size: 13px; color: #666; margin-top: 0; margin-bottom: 15px;">조회할 은행이나 카드를 선택하면 해당 계좌의 입출금 및 이체 내역을 볼 수 있습니다.</p>
+            <h2 style="color: #1b5e20; text-align: center; margin-bottom: 6px;">💳 카드&은행별 입출금 내역</h2>
+            <p style="text-align: center; font-size: 13px; color: #666; margin-top: 0; margin-bottom: 14px;">
+                조회할 계좌나 카드를 선택하세요. <span style="color: #2e7d32; font-weight: 600;">(⋮⋮ 드래그로 위치 변경)</span>
+            </p>
 
             <!-- 등록된 자산 선택 카드 목록 -->
             <div id="history-asset-selector" class="asset-selector-grid"></div>
@@ -583,9 +595,15 @@
             querySnapshot.forEach((doc) => {
                 const data = doc.data(); const amt = Number(data.amount) || 0; const isFav = data.isFavorite === true; 
                 const owner = data.owner || 'common'; 
-                allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav });
+                allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav, order: data.order, historyOrder: data.historyOrder, timestamp: data.timestamp || 0 });
                 if (data.type === 'bank') bankTotal += amt; else if (data.type === 'invest') investTotal += amt; else if (data.type === 'credit') creditTotal += amt;
                 if (owner === 'husband') husbandTotal += amt; else if (owner === 'wife') wifeTotal += amt; else commonTotal += amt;
+            });
+            allAssets.sort((a, b) => {
+                const orderA = (a.order !== undefined && a.order !== null) ? Number(a.order) : Number.MAX_SAFE_INTEGER;
+                const orderB = (b.order !== undefined && b.order !== null) ? Number(b.order) : Number.MAX_SAFE_INTEGER;
+                if (orderA !== orderB) return orderA - orderB;
+                return b.timestamp - a.timestamp;
             });
             updateAssetDropdowns();
             renderFavoriteRoutes();
@@ -788,13 +806,22 @@
         }
 
         // 선택된 자산 유효성 확인 및 기본값 자동 선택
-        if (!selectedHistoryAssetId || !allAssets.find(a => a.id === selectedHistoryAssetId)) {
-            selectedHistoryAssetId = allAssets[0].id;
+        const historyAssets = [...allAssets].sort((a, b) => {
+            const hA = (a.historyOrder !== undefined && a.historyOrder !== null) ? Number(a.historyOrder) : Number.MAX_SAFE_INTEGER;
+            const hB = (b.historyOrder !== undefined && b.historyOrder !== null) ? Number(b.historyOrder) : Number.MAX_SAFE_INTEGER;
+            if (hA !== hB) return hA - hB;
+            const oA = (a.order !== undefined && a.order !== null) ? Number(a.order) : Number.MAX_SAFE_INTEGER;
+            const oB = (b.order !== undefined && b.order !== null) ? Number(b.order) : Number.MAX_SAFE_INTEGER;
+            if (oA !== oB) return oA - oB;
+            return b.timestamp - a.timestamp;
+        });
+
+        if (!selectedHistoryAssetId || !historyAssets.find(a => a.id === selectedHistoryAssetId)) {
+            selectedHistoryAssetId = historyAssets[0].id;
         }
 
-        // 1. 자산 선택 버튼 목록 렌더링
         selectorBox.innerHTML = '';
-        allAssets.forEach(asset => {
+        historyAssets.forEach(asset => {
             const isSelected = asset.id === selectedHistoryAssetId;
             let typeIcon = '🏦';
             if (asset.type === 'invest') typeIcon = '📈';
@@ -803,17 +830,51 @@
             const amtColor = asset.amount < 0 ? '#d32f2f' : (asset.type === 'credit' ? '#d32f2f' : '#2e7d32');
             const card = document.createElement('div');
             card.className = 'asset-select-card' + (isSelected ? ' active' : '');
+            card.dataset.id = asset.id;
             card.onclick = () => selectHistoryAsset(asset.id);
             card.innerHTML = `
-                <div style="display: flex; align-items: center; margin-bottom: 4px; font-size: 12px;">
-                    ${getOwnerBadgeHTML(asset.owner)}
-                    <span style="color: #666;">${typeIcon}</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 12px;">
+                    <div style="display: flex; align-items: center;">
+                        ${getOwnerBadgeHTML(asset.owner)}
+                        <span style="color: #666;">${typeIcon}</span>
+                    </div>
+                    <span class="drag-handle" onclick="event.stopPropagation()" title="드래그하여 위치 이동" style="padding: 0 2px;">⋮⋮</span>
                 </div>
                 <div style="font-weight: bold; font-size: 14px; color: #222; margin-bottom: 3px; word-break: keep-all;">${asset.name}</div>
                 <div style="font-size: 13px; font-weight: bold; color: ${amtColor};">${Number(asset.amount).toLocaleString()}원</div>
             `;
             selectorBox.appendChild(card);
         });
+
+        if (typeof Sortable !== 'undefined') {
+            if (window.historyAssetSortable) window.historyAssetSortable.destroy();
+            window.historyAssetSortable = new Sortable(selectorBox, {
+                animation: 180,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: async function () {
+                    const batch = db.batch();
+                    let hasChanges = false;
+                    const cards = selectorBox.querySelectorAll('.asset-select-card');
+                    cards.forEach((card, index) => {
+                        const assetId = card.dataset.id;
+                        const existing = allAssets.find(a => a.id === assetId);
+                        if (existing && existing.historyOrder !== index) {
+                            batch.update(getCol("가계부자산목록").doc(assetId), { historyOrder: index });
+                            hasChanges = true;
+                        }
+                    });
+                    if (hasChanges) {
+                        try {
+                            await batch.commit();
+                        } catch (error) {
+                            alert("계좌 순서 저장 중 오류가 발생했습니다: " + error.message);
+                        }
+                    }
+                }
+            });
+        }
 
         // 2. 선택된 자산의 입출금 내역 필터링
         const selectedAsset = allAssets.find(a => a.id === selectedHistoryAssetId);
@@ -1557,7 +1618,11 @@
         if(!name || !amount) { alert("자산명과 금액을 적어주세요!"); return; }
         try {
             if (editingAssetId) { await getCol("가계부자산목록").doc(editingAssetId).update({ owner: owner, type: type, name: name, amount: Number(amount) }); alert("자산이 수정되었습니다!"); cancelAssetEdit(); } 
-            else { await getCol("가계부자산목록").add({ owner: owner, type: type, name: name, amount: Number(amount), isFavorite: false, timestamp: Date.now() }); alert("새로운 자산이 추가되었습니다!"); document.getElementById('asset-name').value = ''; document.getElementById('asset-amount').value = ''; }
+            else {
+                const nextOrder = allAssets.filter(a => a.owner === owner).length;
+                await getCol("가계부자산목록").add({ owner: owner, type: type, name: name, amount: Number(amount), isFavorite: false, order: nextOrder, timestamp: Date.now() });
+                alert("새로운 자산이 추가되었습니다!"); document.getElementById('asset-name').value = ''; document.getElementById('asset-amount').value = '';
+            }
         } catch (error) { alert("자산 저장 실패! " + error.message); }
     }
     async function deleteAssetData(id) { if (confirm("이 자산을 삭제하시겠습니까?")) { await getCol("가계부자산목록").doc(id).delete(); } }
@@ -1590,6 +1655,58 @@
         if(toSelect) { const prevTo = toSelect.value; toSelect.innerHTML = flatHtml; if (prevTo && allAssets.find(a => a.id === prevTo)) toSelect.value = prevTo; }
     }
 
+    let assetSortables = [];
+
+    function initAssetDragAndDrop() {
+        assetSortables.forEach(s => s.destroy());
+        assetSortables = [];
+
+        const containers = [
+            { el: document.getElementById('asset-list-husband'), owner: 'husband' },
+            { el: document.getElementById('asset-list-wife'), owner: 'wife' },
+            { el: document.getElementById('asset-list-common'), owner: 'common' }
+        ];
+
+        containers.forEach(({ el }) => {
+            if (!el || typeof Sortable === 'undefined') return;
+            const sortable = new Sortable(el, {
+                group: 'assets-group',
+                animation: 180,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                filter: '.empty-asset-msg',
+                onEnd: async function () {
+                    const batch = db.batch();
+                    let hasChanges = false;
+
+                    containers.forEach(({ el: listEl, owner: targetOwner }) => {
+                        if (!listEl) return;
+                        const cards = listEl.querySelectorAll('.asset-card-item');
+                        cards.forEach((card, index) => {
+                            const assetId = card.dataset.id;
+                            const existing = allAssets.find(a => a.id === assetId);
+                            if (existing && (existing.order !== index || existing.owner !== targetOwner)) {
+                                const ref = getCol("가계부자산목록").doc(assetId);
+                                batch.update(ref, { order: index, owner: targetOwner });
+                                hasChanges = true;
+                            }
+                        });
+                    });
+
+                    if (hasChanges) {
+                        try {
+                            await batch.commit();
+                        } catch (error) {
+                            alert("순서 저장 중 오류가 발생했습니다: " + error.message);
+                        }
+                    }
+                }
+            });
+            assetSortables.push(sortable);
+        });
+    }
+
     function renderAssetScreen(bankTotal, investTotal, creditTotal, husbandTotal, wifeTotal, commonTotal) {
         const assetSummary = document.getElementById("asset-summary"); 
         const listHusband = document.getElementById("asset-list-husband"); const listWife = document.getElementById("asset-list-wife"); const listCommon = document.getElementById("asset-list-common");
@@ -1602,10 +1719,19 @@
             const amountColor = data.amount < 0 ? '#d32f2f' : (data.type === 'credit' ? '#d32f2f' : '#2e7d32');
             
             const listItem = document.createElement("div"); 
+            listItem.className = "asset-card-item";
+            listItem.dataset.id = data.id;
             listItem.style = "padding: 10px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;";
             listItem.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div><div style="font-size: 0.8em; color: #888; margin-bottom: 2px;">[${typeEmoji}]</div><div style="font-size: 1em; margin-bottom: 2px;"><strong>${data.name}</strong></div><div style="font-size: 0.95em; font-weight: bold; color: ${amountColor};">${data.amount.toLocaleString()}원</div></div>
+                    <div style="display: flex; align-items: flex-start; gap: 4px;">
+                        <span class="drag-handle" title="드래그하여 위치 이동">⋮⋮</span>
+                        <div>
+                            <div style="font-size: 0.8em; color: #888; margin-bottom: 2px;">[${typeEmoji}]</div>
+                            <div style="font-size: 1em; margin-bottom: 2px;"><strong>${data.name}</strong></div>
+                            <div style="font-size: 0.95em; font-weight: bold; color: ${amountColor};">${data.amount.toLocaleString()}원</div>
+                        </div>
+                    </div>
                     <button onclick="toggleFavorite('${data.id}', ${data.isFavorite})" style="width: auto; padding: 4px 8px; background-color: ${data.isFavorite ? '#ffb300' : 'transparent'}; font-size: 11px; margin-top: 0; color: ${data.isFavorite ? 'white' : '#bdbdbd'}; border: 1px solid ${data.isFavorite ? '#ffb300' : '#e0e0e0'}; border-radius: 4px; cursor: pointer;">${data.isFavorite ? '⭐ 해제' : '☆ 즐겨찾기'}</button>
                 </div>
                 <div style="display: flex; gap: 5px; width: 100%;">
@@ -1616,9 +1742,11 @@
             if(data.owner === 'husband') listHusband.appendChild(listItem); else if(data.owner === 'wife') listWife.appendChild(listItem); else listCommon.appendChild(listItem);
         });
 
-        if(listHusband.innerHTML === "") listHusband.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
-        if(listWife.innerHTML === "") listWife.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
-        if(listCommon.innerHTML === "") listCommon.innerHTML = "<div style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
+        if(listHusband.innerHTML === "") listHusband.innerHTML = "<div class='empty-asset-msg' style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
+        if(listWife.innerHTML === "") listWife.innerHTML = "<div class='empty-asset-msg' style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
+        if(listCommon.innerHTML === "") listCommon.innerHTML = "<div class='empty-asset-msg' style='text-align:center; color:#999; font-size:12px; padding:10px;'>자산이 없습니다.</div>";
+
+        initAssetDragAndDrop();
 
         const total = bankTotal + investTotal + creditTotal;
         assetSummary.innerHTML = `
