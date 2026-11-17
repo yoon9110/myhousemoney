@@ -43,10 +43,11 @@
     .owner-badge-wife { background-color: #fce4ec; color: #c2185b; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #f48fb1;}
     .owner-badge-common { background-color: #f5f5f5; color: #616161; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; border: 1px solid #bdbdbd;}
 
-    /* 최근 입력어 드롭다운 */
+  /* 최근 입력어 및 전체 자동완성 드롭다운 */
     #merchant-group, #category-group { position: relative; }
-    .recent-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #81c784; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); z-index: 1000; overflow: hidden; }
-    .recent-dropdown-header { font-size: 11px; color: #2e7d32; background: #f1f8e9; padding: 5px 10px; font-weight: bold; border-bottom: 1px solid #e8f5e9; }
+    .recent-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #81c784; border-top: none; border-radius: 0 0 6px 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); z-index: 1000; max-height: 230px; overflow-y: auto; }
+    .recent-dropdown-header { font-size: 11px; color: #2e7d32; background: #f1f8e9; padding: 5px 10px; font-weight: bold; border-bottom: 1px solid #e8f5e9; position: sticky; top: 0; }
+    .recent-dropdown-sub { font-size: 11px; color: #1565c0; background: #e3f2fd; padding: 4px 10px; font-weight: bold; border-top: 1px solid #bbdefb; border-bottom: 1px solid #bbdefb; }
     .recent-item { padding: 9px 12px; font-size: 14px; color: #333; cursor: pointer; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; justify-content: space-between; }
     .recent-item:last-child { border-bottom: none; }
     .recent-item:hover { background-color: #e8f5e9; color: #1b5e20; font-weight: bold; }
@@ -118,8 +119,20 @@
             <button class="excel-btn" onclick="exportExcel()">엑셀로 저장하기</button>
             
             <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 25px; margin-bottom: 25px; border: 1px solid #90caf9;">
-                <h3 style="margin-top: 0; color: #1565c0; font-size: 16px; margin-bottom: 15px;">🔄 자산 이체 (카드 대금 결제)</h3>
-                <div id="favorite-routes-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;"></div>
+                <h3 style="margin-top: 0; color: #1565c0; font-size: 16px; margin-bottom: 12px;">🔄 자산 이체 (카드 대금 결제)</h3>
+                
+                <!-- 고정 이체 원클릭 영역 -->
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 12px; color: #0d47a1; font-weight: bold; margin-bottom: 5px;">📌 고정 이체 원클릭 실행 (클릭 시 선택된 날짜로 즉시 이체)</div>
+                    <div id="fixed-transfers-container" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                </div>
+
+                <!-- 즐겨찾기 이체 구간 영역 -->
+                <div style="margin-bottom: 15px;">
+                    <div style="font-size: 12px; color: #1976d2; font-weight: bold; margin-bottom: 5px;">⭐ 즐겨찾기 이체 구간 (클릭 시 출금/입금 자산 선택)</div>
+                    <div id="favorite-routes-container" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                </div>
+
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
                     <select id="transfer-from" style="flex: 1; font-size: 13px;"><option value="">출금 자산 선택</option></select>
                     <span style="color: #1565c0; font-weight: bold;">➡</span>
@@ -133,6 +146,7 @@
                     <input type="text" id="transfer-memo" placeholder="이체 메모 (예: 매달 적금)" style="flex: 2; border: 1px solid #90caf9;">
                     <button onclick="transferAsset()" style="flex: 1; background-color: #1565c0; margin-top: 0; padding: 10px; font-size: 14px;">이체 실행</button>
                 </div>
+                <button onclick="saveFixedTransfer()" style="background-color: #1e88e5; font-size: 13px; padding: 9px; margin-top: 8px;">⭐ 현재 입력내용 고정이체로 저장 (별칭 지정)</button>
             </div>
 
             <div id="ledger-input-box" style="background-color: #f1f8e9; padding: 15px; border-radius: 8px; border: 1px solid #c5e1a5; margin-bottom: 25px;">
@@ -349,6 +363,7 @@
     let unsubAssets = null;
     let unsubRoutes = null;
     let unsubFixed = null;
+    let unsubFixedTransfers = null;
     let unsubBudget = null;
 
     let editingId = null;
@@ -358,6 +373,7 @@
     let allAssets = []; 
     let favoriteRoutes = []; 
     let fixedExpenses = [];
+    let fixedTransfers = [];
     let monthlyBudget = 0;
     let selectedHistoryAssetId = null;
 
@@ -450,7 +466,7 @@
         if (!user) return;
 
         try {
-            const collections = ["가계부결제내역", "가계부자산목록", "가계부이체구간", "가계부고정지출", "가계부설정"];
+           const collections = ["가계부결제내역", "가계부자산목록", "가계부이체구간", "가계부고정지출", "가계부고정이체", "가계부설정"];
             for (const colName of collections) {
                 const snapshot = await getCol(colName).get();
                 const batch = db.batch();
@@ -517,6 +533,8 @@
                 if (owner === 'husband') husbandTotal += amt; else if (owner === 'wife') wifeTotal += amt; else commonTotal += amt;
             });
             updateAssetDropdowns();
+            renderFavoriteRoutes();
+            renderFixedTransfers();
             renderFixedExpenses();
             renderList(); 
             renderAssetScreen(bankTotal, investTotal, creditTotal, husbandTotal, wifeTotal, commonTotal);
@@ -530,6 +548,13 @@
             renderFavoriteRoutes();
         });
 
+        if (unsubFixedTransfers) unsubFixedTransfers();
+        unsubFixedTransfers = getCol("가계부고정이체").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+            fixedTransfers = [];
+            snapshot.forEach(doc => { fixedTransfers.push({ id: doc.id, ...doc.data() }); });
+            renderFixedTransfers();
+        });
+
         if (unsubFixed) unsubFixed();
         unsubFixed = getCol("가계부고정지출").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
             fixedExpenses = [];
@@ -537,11 +562,134 @@
             renderFixedExpenses();
         });
 
-        if (unsubBudget) unsubBudget();
+       if (unsubBudget) unsubBudget();
         unsubBudget = getCol("가계부설정").doc("budget").onSnapshot((doc) => {
             monthlyBudget = doc.exists ? (Number(doc.data().monthlyBudget) || 0) : 0;
             renderList();
         });
+    }
+
+    // ==========================================
+    // [고정 이체 원클릭 저장 / 실행 / 삭제 (별칭 지원)]
+    // ==========================================
+    async function saveFixedTransfer() {
+        const fromId = document.getElementById('transfer-from').value;
+        const toId = document.getElementById('transfer-to').value;
+        const amount = Number(document.getElementById('transfer-amount').value);
+        const memo = document.getElementById('transfer-memo').value.trim();
+
+        if (!fromId || !toId) {
+            alert("고정 이체로 저장할 출금 자산과 입금 자산을 먼저 선택해주세요!");
+            return;
+        }
+        if (fromId === toId) {
+            alert("출금 자산과 입금 자산은 서로 다르게 선택해주세요.");
+            return;
+        }
+        if (!amount || amount <= 0) {
+            alert("고정 이체로 저장할 이체 금액을 입력해주세요!");
+            return;
+        }
+
+        const fromAsset = allAssets.find(a => a.id === fromId);
+        const toAsset = allAssets.find(a => a.id === toId);
+        const defaultAlias = memo || (fromAsset && toAsset ? `${fromAsset.name} ➔ ${toAsset.name}` : '고정이체');
+
+        const aliasInput = prompt("고정 이체 버튼에 표시할 별칭을 입력하세요:\n(예: 남편 용돈, 적금 자동이체, 카드대금 납부)", defaultAlias);
+        if (aliasInput === null) return;
+        const alias = aliasInput.trim() || defaultAlias;
+
+        try {
+            await getCol("가계부고정이체").add({
+                alias: alias,
+                fromId: fromId,
+                toId: toId,
+                amount: amount,
+                memo: memo,
+                timestamp: Date.now()
+            });
+            alert(`📌 [${alias}] (${amount.toLocaleString()}원) 항목이 고정 이체 버튼으로 저장되었습니다!`);
+        } catch (error) {
+            alert("고정 이체 저장 실패: " + error.message);
+        }
+    }
+
+    function renderFixedTransfers() {
+        const container = document.getElementById('fixed-transfers-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (fixedTransfers.length === 0) {
+            container.innerHTML = '<span style="font-size: 12px; color: #5c9ce6;">저장된 고정 이체가 없습니다. 아래 입력 후 [⭐ 현재 입력내용 고정이체로 저장]을 눌러보세요.</span>';
+            return;
+        }
+
+        fixedTransfers.forEach(item => {
+            const fromAsset = allAssets.find(a => a.id === item.fromId);
+            const toAsset = allAssets.find(a => a.id === item.toId);
+            const displayAlias = item.alias || item.memo || (fromAsset && toAsset ? `${fromAsset.name} ➔ ${toAsset.name}` : '고정이체');
+            const tooltip = (fromAsset && toAsset) ? `${fromAsset.name} ➔ ${toAsset.name}` : '연결 자산 정보';
+
+            const chip = document.createElement('div');
+            chip.title = tooltip;
+            chip.style = "background: #ffffff; color: #0d47a1; padding: 6px 11px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid #64b5f6; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
+            chip.innerHTML = `
+                <span onclick="applyFixedTransfer('${item.id}')" style="font-weight: bold; display: flex; align-items: center; gap: 3px;">
+                    📌 ${displayAlias} · ${Number(item.amount).toLocaleString()}원
+                </span>
+                <span onclick="deleteFixedTransfer('${item.id}')" style="color: #d32f2f; font-weight: bold; padding-left: 5px; border-left: 1px solid #bbdefb;">✕</span>
+            `;
+            container.appendChild(chip);
+        });
+    }
+
+    async function applyFixedTransfer(id) {
+        const item = fixedTransfers.find(t => t.id === id);
+        if (!item) return;
+
+        const fromAsset = allAssets.find(a => a.id === item.fromId);
+        const toAsset = allAssets.find(a => a.id === item.toId);
+        if (!fromAsset || !toAsset) {
+            alert("연결된 출금 또는 입금 자산이 삭제되어 이체를 실행할 수 없습니다.");
+            return;
+        }
+
+        const targetDate = document.getElementById('date').value || formatLocalDate(new Date());
+        const amountNum = Number(item.amount);
+        const displayAlias = item.alias || `${fromAsset.name} ➔ ${toAsset.name}`;
+
+        if (!confirm(`📌 [${displayAlias}] ${amountNum.toLocaleString()}원\n출금: ${fromAsset.name} ➔ 입금: ${toAsset.name}${item.memo ? '\n메모: ' + item.memo : ''}\n\n선택된 날짜(${targetDate})로 즉시 이체를 실행할까요?`)) {
+            return;
+        }
+
+        try {
+            await getCol("가계부자산목록").doc(fromAsset.id).update({ amount: fromAsset.amount - amountNum });
+            await getCol("가계부자산목록").doc(toAsset.id).update({ amount: toAsset.amount + amountNum });
+
+            const fromPrefix = fromAsset.owner === 'husband' ? '남편' : (fromAsset.owner === 'wife' ? '아내' : '공동');
+            const toPrefix = toAsset.owner === 'husband' ? '남편' : (toAsset.owner === 'wife' ? '아내' : '공동');
+
+            await getCol("가계부결제내역").add({
+                date: targetDate,
+                merchant: `[${fromPrefix}]${fromAsset.name} ➔ [${toPrefix}]${toAsset.name}`,
+                amount: amountNum,
+                category: "자산이체",
+                type: 'transfer',
+                fromAssetId: fromAsset.id,
+                toAssetId: toAsset.id,
+                memo: item.memo || displayAlias,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert(`✅ '${displayAlias}' 이체가 완료되었습니다!`);
+        } catch (error) {
+            alert("고정 이체 실행 실패: " + error.message);
+        }
+    }
+
+    async function deleteFixedTransfer(id) {
+        if (confirm("이 고정 이체 버튼을 삭제하시겠습니까?")) {
+            await getCol("가계부고정이체").doc(id).delete();
+        }
     }
 
     // ==========================================
@@ -759,8 +907,8 @@
         }
     }
 
-    // ==========================================
-    // [고정 지출 원클릭 저장 / 실행 / 삭제]
+   // ==========================================
+    // [고정 지출 원클릭 저장 / 실행 / 삭제 (별칭 지원)]
     // ==========================================
     async function saveFixedExpense() {
         const merchant = document.getElementById('merchant').value.trim();
@@ -773,15 +921,20 @@
             return;
         }
 
+        const aliasInput = prompt("고정 지출 버튼에 표시할 별칭을 입력하세요:\n(예: 아파트 관리비, 넷플릭스, 휴대폰요금)", merchant);
+        if (aliasInput === null) return;
+        const alias = aliasInput.trim() || merchant;
+
         try {
             await getCol("가계부고정지출").add({
+                alias: alias,
                 merchant: merchant,
                 amount: amount,
                 category: category || '고정지출',
                 linkedAssetId: linkedAssetId || '',
                 timestamp: Date.now()
             });
-            alert(`📌 '${merchant}' (${amount.toLocaleString()}원) 항목이 고정 지출 버튼으로 저장되었습니다!`);
+            alert(`📌 [${alias}] (${amount.toLocaleString()}원) 항목이 고정 지출 버튼으로 저장되었습니다!`);
         } catch (error) {
             alert("고정 지출 저장 실패: " + error.message);
         }
@@ -800,13 +953,15 @@
         fixedExpenses.forEach(item => {
             const targetAsset = item.linkedAssetId ? allAssets.find(a => a.id === item.linkedAssetId) : null;
             const ownerBadge = targetAsset ? getOwnerBadgeHTML(targetAsset.owner) : '';
-            const assetNameTag = targetAsset ? `(${targetAsset.name})` : '';
+            const displayAlias = item.alias || item.merchant;
+            const tooltip = `결제처: ${item.merchant} / 항목: ${item.category || '고정지출'}${targetAsset ? ' / 연결자산: ' + targetAsset.name : ''}`;
 
             const chip = document.createElement('div');
+            chip.title = tooltip;
             chip.style = "background: #ffffff; color: #1b5e20; padding: 6px 11px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid #81c784; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
             chip.innerHTML = `
                 <span onclick="applyFixedExpense('${item.id}')" style="font-weight: bold; display: flex; align-items: center; gap: 3px;">
-                    📌 ${ownerBadge}${item.merchant} ${assetNameTag} · ${Number(item.amount).toLocaleString()}원
+                    📌 ${ownerBadge}${displayAlias} · ${Number(item.amount).toLocaleString()}원
                 </span>
                 <span onclick="deleteFixedExpense('${item.id}')" style="color: #d32f2f; font-weight: bold; padding-left: 5px; border-left: 1px solid #c8e6c9;">✕</span>
             `;
@@ -822,8 +977,12 @@
         const amountNum = Number(item.amount);
         const targetAsset = item.linkedAssetId ? allAssets.find(a => a.id === item.linkedAssetId) : null;
         const assetInfo = targetAsset ? `\n연결 자산: ${targetAsset.name} (잔액 차감)` : '';
+        const displayAlias = item.alias || item.merchant;
+        const titleLine = (item.alias && item.alias !== item.merchant)
+            ? `📌 [${displayAlias}] (결제처: ${item.merchant})`
+            : `📌 [${item.merchant}]`;
 
-        if (!confirm(`📌 [${item.merchant}] ${amountNum.toLocaleString()}원 (${item.category})${assetInfo}\n\n선택된 날짜(${targetDate})의 지출로 바로 등록할까요?`)) {
+        if (!confirm(`${titleLine} ${amountNum.toLocaleString()}원 (${item.category})${assetInfo}\n\n선택된 날짜(${targetDate})의 지출로 바로 등록할까요?`)) {
             return;
         }
 
@@ -840,7 +999,7 @@
                 linkedAssetId: targetAsset ? targetAsset.id : '',
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            alert(`✅ '${item.merchant}' 지출이 등록되었습니다!`);
+            alert(`✅ '${displayAlias}' 지출이 등록되었습니다!`);
         } catch (error) {
             alert("고정 지출 등록 실패: " + error.message);
         }
@@ -1463,14 +1622,15 @@
             });
     }
 
-    function getRecentValues(field) {
+  // limit을 주면 상위 N개(최근 5개), 안 주면 지금까지 사용한 전체 고유 목록 반환
+    function getAllUniqueValues(field, limit) {
         const sorted = getSortedNonTransferPayments().filter(p => p[field] && String(p[field]).trim() !== '');
         const unique = [];
         for (const item of sorted) {
             const val = String(item[field]).trim();
             if (!unique.includes(val)) {
                 unique.push(val);
-                if (unique.length >= 5) break;
+                if (limit && unique.length >= limit) break;
             }
         }
         return unique;
@@ -1508,6 +1668,26 @@
         }
     }
 
+    function createAutocompleteRow(val, badgeLabel, badgeColor, input, box, field) {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'recent-item';
+        itemDiv.innerHTML = `
+            <span style="display: flex; align-items: center; gap: 6px;">
+                <span>${val}</span>
+                <span style="font-size: 10px; padding: 1px 5px; border-radius: 3px; background: ${badgeColor.bg}; color: ${badgeColor.text}; font-weight: bold;">${badgeLabel}</span>
+            </span>
+            <span style="font-size: 11px; color: #81c784;">선택 ↵</span>
+        `;
+        itemDiv.addEventListener('click', () => {
+            input.value = val;
+            box.style.display = 'none';
+            if (field === 'merchant') {
+                autoFillFromMerchant(val, true);
+            }
+        });
+        return itemDiv;
+    }
+
     function showRecentDropdown(field) {
         const otherField = field === 'merchant' ? 'category' : 'merchant';
         const otherBox = document.getElementById(otherField + '-recent-box');
@@ -1518,31 +1698,49 @@
         if (!input || !box) return;
 
         const keyword = input.value.trim().toLowerCase();
-        let recents = getRecentValues(field);
+        const recent5 = getAllUniqueValues(field, 5);
 
-        if (keyword !== '') {
-            recents = recents.filter(val => val.toLowerCase().includes(keyword) && val.toLowerCase() !== keyword);
+        // 1. 입력칸이 비어있을 때: 최근 입력어 5가지만 표시
+        if (keyword === '') {
+            if (recent5.length === 0) {
+                box.style.display = 'none';
+                return;
+            }
+            box.innerHTML = `<div class="recent-dropdown-header">🕒 최근 입력어 (클릭 시 자동입력)</div>`;
+            recent5.forEach(val => {
+                box.appendChild(createAutocompleteRow(val, '최근', { bg: '#e8f5e9', text: '#2e7d32' }, input, box, field));
+            });
+            box.style.display = 'block';
+            return;
         }
 
-        if (recents.length === 0) {
+        // 2. 글자를 입력 중일 때: 최근 5개 중 일치 항목 + 전체 과거 내역 중 일치 항목 모두 검색
+        const allHistory = getAllUniqueValues(field);
+        const recentMatches = recent5.filter(val => val.toLowerCase().includes(keyword) && val.toLowerCase() !== keyword);
+        const pastMatches = allHistory.filter(val => !recent5.includes(val) && val.toLowerCase().includes(keyword) && val.toLowerCase() !== keyword).slice(0, 10);
+
+        if (recentMatches.length === 0 && pastMatches.length === 0) {
             box.style.display = 'none';
             return;
         }
 
-        box.innerHTML = `<div class="recent-dropdown-header">🕒 최근 입력어 (클릭 시 자동입력)</div>`;
-        recents.forEach(val => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'recent-item';
-            itemDiv.innerHTML = `<span>${val}</span><span style="font-size: 11px; color: #81c784;">선택 ↵</span>`;
-            itemDiv.addEventListener('click', () => {
-                input.value = val;
-                box.style.display = 'none';
-                if (field === 'merchant') {
-                    autoFillFromMerchant(val, true);
-                }
-            });
-            box.appendChild(itemDiv);
+        box.innerHTML = `<div class="recent-dropdown-header">🔍 자동완성 추천 (클릭 시 선택)</div>`;
+
+        recentMatches.forEach(val => {
+            box.appendChild(createAutocompleteRow(val, '최근', { bg: '#e8f5e9', text: '#2e7d32' }, input, box, field));
         });
+
+        if (pastMatches.length > 0) {
+            if (recentMatches.length > 0) {
+                const subHeader = document.createElement('div');
+                subHeader.className = 'recent-dropdown-sub';
+                subHeader.innerText = '📜 이전 사용 내역에서 찾은 항목';
+                box.appendChild(subHeader);
+            }
+            pastMatches.forEach(val => {
+                box.appendChild(createAutocompleteRow(val, '이전내역', { bg: '#e3f2fd', text: '#1565c0' }, input, box, field));
+            });
+        }
 
         box.style.display = 'block';
     }
