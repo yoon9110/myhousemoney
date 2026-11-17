@@ -96,6 +96,22 @@
     .drag-handle:active { cursor: grabbing; color: #2e7d32; }
     .sortable-ghost { opacity: 0.4; background: #e8f5e9 !important; border: 2px dashed #4caf50 !important; }
     .sortable-chosen { box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14) !important; }
+
+    /* 드래그 가능한 커스텀 자산 선택 목록 */
+    .custom-asset-select { position: relative; width: 100%; }
+    .custom-asset-trigger { width: 100%; padding: 11px 12px; border: 1px solid #d9dfe6; border-radius: 10px; font-size: 14px; background: #fafbfc; color: #191f28; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 44px; user-select: none; }
+    .custom-asset-trigger:hover { border-color: #2e7d32; background: #ffffff; }
+    .custom-asset-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .custom-asset-trigger-text.placeholder { color: #6b7684; font-weight: 400; }
+    .custom-asset-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 240px; width: 100%; background: #ffffff; border: 1px solid #81c784; border-radius: 12px; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.15); z-index: 1200; max-height: 270px; overflow-y: auto; }
+    .custom-asset-menu.align-right { left: auto; right: 0; }
+    .custom-asset-menu-header { font-size: 11px; color: #2e7d32; background: #f1f8e9; padding: 6px 12px; font-weight: 700; border-bottom: 1px solid #e8f5e9; position: sticky; top: 0; z-index: 2; }
+    .custom-asset-none { padding: 10px 12px; font-size: 13px; color: #6b7684; cursor: pointer; border-bottom: 1px solid #eaedf0; background: #fafbfc; }
+    .custom-asset-none:hover { background: #f2f4f6; color: #191f28; font-weight: 600; }
+    .custom-asset-option { padding: 9px 10px; font-size: 13.5px; color: #191f28; cursor: pointer; border-bottom: 1px solid #f2f4f6; display: flex; align-items: center; justify-content: space-between; gap: 6px; background: #ffffff; }
+    .custom-asset-option:last-child { border-bottom: none; }
+    .custom-asset-option:hover { background: #f4fbf5; }
+    .custom-asset-option.selected { background: #e8f5e9; font-weight: 700; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <!-- 파이어베이스 연결 도구 -->
@@ -174,9 +190,14 @@
                     </div>
                     <div>
                         <label style="color: #1b5e20;">🔗 연결 자산</label>
-                        <select id="linked-asset">
-                            <option value="">선택 안 함 (기록만)</option>
-                        </select>
+                        <div class="custom-asset-select" id="wrap-linked-asset">
+                            <input type="hidden" id="linked-asset" value="">
+                            <div class="custom-asset-trigger" onclick="toggleCustomAssetDropdown('linked-asset')">
+                                <span id="label-linked-asset" class="custom-asset-trigger-text placeholder">선택 안 함 (기록만)</span>
+                                <span style="font-size: 11px; color: #6b7684;">▾</span>
+                            </div>
+                            <div id="menu-linked-asset" class="custom-asset-menu align-right"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -233,9 +254,23 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: center;">
-                    <select id="transfer-from" style="flex: 1; font-size: 14px; background: white;"><option value="">출금 자산 선택</option></select>
+                    <div class="custom-asset-select" id="wrap-transfer-from" style="flex: 1; min-width: 0;">
+                        <input type="hidden" id="transfer-from" value="">
+                        <div class="custom-asset-trigger" style="background: white;" onclick="toggleCustomAssetDropdown('transfer-from')">
+                            <span id="label-transfer-from" class="custom-asset-trigger-text placeholder">출금 자산 선택</span>
+                            <span style="font-size: 11px; color: #1565c0;">▾</span>
+                        </div>
+                        <div id="menu-transfer-from" class="custom-asset-menu"></div>
+                    </div>
                     <span style="color: #1565c0; font-weight: 800;">➡</span>
-                    <select id="transfer-to" style="flex: 1; font-size: 14px; background: white;"><option value="">입금 자산 선택</option></select>
+                    <div class="custom-asset-select" id="wrap-transfer-to" style="flex: 1; min-width: 0;">
+                        <input type="hidden" id="transfer-to" value="">
+                        <div class="custom-asset-trigger" style="background: white;" onclick="toggleCustomAssetDropdown('transfer-to')">
+                            <span id="label-transfer-to" class="custom-asset-trigger-text placeholder">입금 자산 선택</span>
+                            <span style="font-size: 11px; color: #1565c0;">▾</span>
+                        </div>
+                        <div id="menu-transfer-to" class="custom-asset-menu align-right"></div>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                     <input type="number" id="transfer-amount" placeholder="이체 금액 (예: 200000)" style="flex: 1.4; background: white;">
@@ -595,7 +630,7 @@
             querySnapshot.forEach((doc) => {
                 const data = doc.data(); const amt = Number(data.amount) || 0; const isFav = data.isFavorite === true; 
                 const owner = data.owner || 'common'; 
-                allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav, order: data.order, historyOrder: data.historyOrder, timestamp: data.timestamp || 0 });
+                allAssets.push({ id: doc.id, owner: owner, type: data.type, name: data.name, amount: amt, isFavorite: isFav, order: data.order, historyOrder: data.historyOrder, dropdownOrder: data.dropdownOrder, timestamp: data.timestamp || 0 });
                 if (data.type === 'bank') bankTotal += amt; else if (data.type === 'invest') investTotal += amt; else if (data.type === 'credit') creditTotal += amt;
                 if (owner === 'husband') husbandTotal += amt; else if (owner === 'wife') wifeTotal += amt; else commonTotal += amt;
             });
@@ -614,10 +649,18 @@
             renderAssetHistorySection();
         });
 
+        const sortByOrder = (a, b) => {
+            const oA = (a.order !== undefined && a.order !== null) ? Number(a.order) : Number.MAX_SAFE_INTEGER;
+            const oB = (b.order !== undefined && b.order !== null) ? Number(b.order) : Number.MAX_SAFE_INTEGER;
+            if (oA !== oB) return oA - oB;
+            return (a.timestamp || 0) - (b.timestamp || 0);
+        };
+
         if (unsubRoutes) unsubRoutes();
         unsubRoutes = getCol("가계부이체구간").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
             favoriteRoutes = [];
             snapshot.forEach(doc => { favoriteRoutes.push({ id: doc.id, ...doc.data() }); });
+            favoriteRoutes.sort(sortByOrder);
             renderFavoriteRoutes();
         });
 
@@ -625,6 +668,7 @@
         unsubFixedTransfers = getCol("가계부고정이체").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
             fixedTransfers = [];
             snapshot.forEach(doc => { fixedTransfers.push({ id: doc.id, ...doc.data() }); });
+            fixedTransfers.sort(sortByOrder);
             renderFixedTransfers();
         });
 
@@ -632,6 +676,7 @@
         unsubFixed = getCol("가계부고정지출").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
             fixedExpenses = [];
             snapshot.forEach(doc => { fixedExpenses.push({ id: doc.id, ...doc.data() }); });
+            fixedExpenses.sort(sortByOrder);
             renderFixedExpenses();
         });
 
@@ -703,10 +748,13 @@
             const displayAlias = item.alias || item.memo || (fromAsset && toAsset ? `${fromAsset.name} ➔ ${toAsset.name}` : '고정이체');
             const tooltip = (fromAsset && toAsset) ? `${fromAsset.name} ➔ ${toAsset.name}` : '연결 자산 정보';
 
-            const chip = document.createElement('div');
+           const chip = document.createElement('div');
+            chip.className = 'sortable-chip';
+            chip.dataset.id = item.id;
             chip.title = tooltip;
             chip.style = "background: #ffffff; color: #0d47a1; padding: 6px 11px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid #64b5f6; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
             chip.innerHTML = `
+                <span class="drag-handle" onclick="event.stopPropagation()" style="font-size: 13px; padding-right: 2px;">⋮⋮</span>
                 <span onclick="applyFixedTransfer('${item.id}')" style="font-weight: bold; display: flex; align-items: center; gap: 3px;">
                     📌 ${displayAlias} · ${Number(item.amount).toLocaleString()}원
                 </span>
@@ -714,6 +762,7 @@
             `;
             container.appendChild(chip);
         });
+        initChipSortable('fixed-transfers-container', '가계부고정이체', fixedTransfers);
     }
 
     async function applyFixedTransfer(id) {
@@ -1073,9 +1122,12 @@
             const tooltip = `결제처: ${item.merchant} / 항목: ${item.category || '고정지출'}${targetAsset ? ' / 연결자산: ' + targetAsset.name : ''}`;
 
             const chip = document.createElement('div');
+            chip.className = 'sortable-chip';
+            chip.dataset.id = item.id;
             chip.title = tooltip;
             chip.style = "background: #ffffff; color: #1b5e20; padding: 6px 11px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid #81c784; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
             chip.innerHTML = `
+                <span class="drag-handle" onclick="event.stopPropagation()" style="font-size: 13px; padding-right: 2px;">⋮⋮</span>
                 <span onclick="applyFixedExpense('${item.id}')" style="font-weight: bold; display: flex; align-items: center; gap: 3px;">
                     📌 ${ownerBadge}${displayAlias} · ${Number(item.amount).toLocaleString()}원
                 </span>
@@ -1083,6 +1135,7 @@
             `;
             container.appendChild(chip);
         });
+        initChipSortable('fixed-expenses-container', '가계부고정지출', fixedExpenses);
     }
 
     async function applyFixedExpense(id) {
@@ -1287,7 +1340,7 @@
         editingId = id;
         document.getElementById('date').value = date; document.getElementById('merchant').value = merchant;
         document.getElementById('amount').value = amount; document.getElementById('category').value = category;
-        if(linkedAssetId) document.getElementById('linked-asset').value = linkedAssetId; else document.getElementById('linked-asset').value = '';
+        setCustomAssetSelect('linked-asset', linkedAssetId || '');
         document.getElementById('input-buttons').style.display = "none";
         document.getElementById('save-fixed-btn').style.display = "none";
         document.getElementById('edit-buttons').style.display = "flex";
@@ -1302,7 +1355,7 @@
         document.getElementById('save-fixed-btn').style.display = "block";
         document.getElementById('edit-buttons').style.display = "none";
         document.getElementById('merchant').value = ''; document.getElementById('amount').value = '';
-        document.getElementById('category').value = ''; document.getElementById('linked-asset').value = '';
+        document.getElementById('category').value = ''; setCustomAssetSelect('linked-asset', '');
         document.getElementById('date').value = formatLocalDate(new Date());
         const msgBox = document.getElementById('smart-match-msg');
         if (msgBox) msgBox.style.display = 'none';
@@ -1382,15 +1435,19 @@
             if(!fromAsset || !toAsset) return; 
             const fromBadge = getOwnerBadgeHTML(fromAsset.owner); const toBadge = getOwnerBadgeHTML(toAsset.owner);
             const btn = document.createElement('div');
-            btn.style = "background: #e3f2fd; color: #1565c0; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border: 1px solid #90caf9;";
-            btn.innerHTML = `<span onclick="applyRoute('${route.fromId}', '${route.toId}', '${route.memo}')" style="font-weight: bold; display: flex; align-items: center;">⭐ ${fromBadge}${fromAsset.name} ➔ ${toBadge}${toAsset.name}</span>
+            btn.className = 'sortable-chip';
+            btn.dataset.id = route.id;
+            btn.style = "background: #e3f2fd; color: #1565c0; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid #90caf9;";
+            btn.innerHTML = `<span class="drag-handle" onclick="event.stopPropagation()" style="font-size: 13px; padding-right: 2px;">⋮⋮</span>
+                             <span onclick="applyRoute('${route.fromId}', '${route.toId}', '${route.memo}')" style="font-weight: bold; display: flex; align-items: center;">⭐ ${fromBadge}${fromAsset.name} ➔ ${toBadge}${toAsset.name}</span>
                              <span onclick="deleteRoute('${route.id}')" style="color: #d32f2f; font-weight: bold; padding-left: 5px; border-left: 1px solid #90caf9;">✕</span>`;
             container.appendChild(btn);
         });
+        initChipSortable('favorite-routes-container', '가계부이체구간', favoriteRoutes);
     }
 
     function applyRoute(fromId, toId, memo) {
-        document.getElementById('transfer-from').value = fromId; document.getElementById('transfer-to').value = toId; document.getElementById('transfer-memo').value = memo;
+        setCustomAssetSelect('transfer-from', fromId); setCustomAssetSelect('transfer-to', toId); document.getElementById('transfer-memo').value = memo;
     }
     
     async function deleteRoute(id) {
@@ -1416,7 +1473,7 @@
                 date: document.getElementById('date').value, merchant: `[${fromPrefix}]${fromAsset.name} ➔ [${toPrefix}]${toAsset.name}`, amount: amount, category: "자산이체", type: 'transfer', fromAssetId: fromId, toAssetId: toId, memo: memoStr, timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             alert(`✅ 이체 내역이 저장되었습니다!`);
-            document.getElementById('transfer-amount').value = ''; document.getElementById('transfer-from').value = ''; document.getElementById('transfer-to').value = ''; document.getElementById('transfer-memo').value = '';
+            document.getElementById('transfer-amount').value = ''; setCustomAssetSelect('transfer-from', ''); setCustomAssetSelect('transfer-to', ''); document.getElementById('transfer-memo').value = '';
         } catch (error) { alert("이체 중 오류 발생: " + error.message); }
     }
 
@@ -1632,27 +1689,181 @@
         if(owner === 'husband') return `<span class="owner-badge-husband">남편</span>`; if(owner === 'wife') return `<span class="owner-badge-wife">아내</span>`; return `<span class="owner-badge-common">공동</span>`;
     }
 
-    function updateAssetDropdowns() {
-        const favAssets = allAssets.filter(a => a.isFavorite); const normalAssets = allAssets.filter(a => !a.isFavorite);
-        let groupedHtml = '<option value="">선택 안 함 (가계부 내역만 기록)</option>';
-        if(favAssets.length > 0) { 
-            groupedHtml += '<optgroup label="⭐ 즐겨찾는 자산">'; 
-            favAssets.forEach(asset => { const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] '); groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; }); 
-            groupedHtml += '</optgroup>'; 
-        }
-        if(normalAssets.length > 0) { 
-            groupedHtml += '<optgroup label="일반 자산">'; 
-            normalAssets.forEach(asset => { const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] '); groupedHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; }); 
-            groupedHtml += '</optgroup>'; 
-        }
-        const linkedSelect = document.getElementById('linked-asset');
-        if(linkedSelect) { const prevLinked = linkedSelect.value; linkedSelect.innerHTML = groupedHtml; if (prevLinked && allAssets.find(a => a.id === prevLinked)) linkedSelect.value = prevLinked; }
+    let chipSortables = {};
+    function initChipSortable(containerId, collectionName, dataArray) {
+        const el = document.getElementById(containerId);
+        if (!el || typeof Sortable === 'undefined' || dataArray.length === 0) return;
+        if (chipSortables[containerId]) chipSortables[containerId].destroy();
 
-        let flatHtml = '<option value="">선택하세요</option>';
-        allAssets.forEach(asset => { const prefix = asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] '); flatHtml += `<option value="${asset.id}">${prefix}${asset.name} (${Number(asset.amount).toLocaleString()}원)</option>`; });
-        const fromSelect = document.getElementById('transfer-from'); const toSelect = document.getElementById('transfer-to');
-        if(fromSelect) { const prevFrom = fromSelect.value; fromSelect.innerHTML = flatHtml; if (prevFrom && allAssets.find(a => a.id === prevFrom)) fromSelect.value = prevFrom; }
-        if(toSelect) { const prevTo = toSelect.value; toSelect.innerHTML = flatHtml; if (prevTo && allAssets.find(a => a.id === prevTo)) toSelect.value = prevTo; }
+        chipSortables[containerId] = new Sortable(el, {
+            animation: 180,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            onEnd: async function () {
+                const batch = db.batch();
+                let hasChanges = false;
+                const chips = el.querySelectorAll('.sortable-chip');
+                chips.forEach((chip, index) => {
+                    const id = chip.dataset.id;
+                    const existing = dataArray.find(x => x.id === id);
+                    if (existing && existing.order !== index) {
+                        batch.update(getCol(collectionName).doc(id), { order: index });
+                        hasChanges = true;
+                    }
+                });
+                if (hasChanges) {
+                    try { await batch.commit(); } catch (e) { alert("순서 저장 실패: " + e.message); }
+                }
+            }
+        });
+    }
+
+    const customDropdownConfig = {
+        'linked-asset': '선택 안 함 (기록만)',
+        'transfer-from': '출금 자산 선택',
+        'transfer-to': '입금 자산 선택'
+    };
+    let customDropdownSortables = {};
+
+    function getSortedDropdownAssets() {
+        return [...allAssets].sort((a, b) => {
+            const dA = (a.dropdownOrder !== undefined && a.dropdownOrder !== null) ? Number(a.dropdownOrder) : Number.MAX_SAFE_INTEGER;
+            const dB = (b.dropdownOrder !== undefined && b.dropdownOrder !== null) ? Number(b.dropdownOrder) : Number.MAX_SAFE_INTEGER;
+            if (dA !== dB) return dA - dB;
+            if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+            const oA = (a.order !== undefined && a.order !== null) ? Number(a.order) : Number.MAX_SAFE_INTEGER;
+            const oB = (b.order !== undefined && b.order !== null) ? Number(b.order) : Number.MAX_SAFE_INTEGER;
+            if (oA !== oB) return oA - oB;
+            return b.timestamp - a.timestamp;
+        });
+    }
+
+    function setCustomAssetSelect(selectId, assetId) {
+        const hiddenInput = document.getElementById(selectId);
+        const labelEl = document.getElementById('label-' + selectId);
+        const menuEl = document.getElementById('menu-' + selectId);
+        if (!hiddenInput || !labelEl) return;
+
+        const targetAsset = assetId ? allAssets.find(a => a.id === assetId) : null;
+        if (targetAsset) {
+            hiddenInput.value = targetAsset.id;
+            const prefix = targetAsset.owner === 'husband' ? '[남편] ' : (targetAsset.owner === 'wife' ? '[아내] ' : '[공동] ');
+            labelEl.innerText = `${prefix}${targetAsset.name} (${Number(targetAsset.amount).toLocaleString()}원)`;
+            labelEl.classList.remove('placeholder');
+        } else {
+            hiddenInput.value = '';
+            labelEl.innerText = customDropdownConfig[selectId] || '선택하세요';
+            labelEl.classList.add('placeholder');
+        }
+
+        if (menuEl) {
+            menuEl.querySelectorAll('.custom-asset-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.id === hiddenInput.value);
+            });
+            menuEl.style.display = 'none';
+        }
+    }
+
+    function toggleCustomAssetDropdown(selectId) {
+        const targetMenu = document.getElementById('menu-' + selectId);
+        if (!targetMenu) return;
+        const isCurrentlyOpen = targetMenu.style.display === 'block';
+
+        Object.keys(customDropdownConfig).forEach(id => {
+            const m = document.getElementById('menu-' + id);
+            if (m) m.style.display = 'none';
+        });
+
+        if (!isCurrentlyOpen) {
+            targetMenu.style.display = 'block';
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        Object.keys(customDropdownConfig).forEach(id => {
+            const wrap = document.getElementById('wrap-' + id);
+            const menu = document.getElementById('menu-' + id);
+            if (wrap && menu && !wrap.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+    });
+
+    function updateAssetDropdowns() {
+        const sortedAssets = getSortedDropdownAssets();
+
+        Object.entries(customDropdownConfig).forEach(([selectId, emptyText]) => {
+            const hiddenInput = document.getElementById(selectId);
+            const menuEl = document.getElementById('menu-' + selectId);
+            if (!hiddenInput || !menuEl) return;
+
+            const wasOpen = menuEl.style.display === 'block';
+            const currentVal = hiddenInput.value;
+
+            menuEl.innerHTML = `<div class="custom-asset-menu-header">⋮⋮ 손잡이를 드래그하여 목록 순서 변경</div>`;
+
+            const noneItem = document.createElement('div');
+            noneItem.className = 'custom-asset-none';
+            noneItem.innerText = emptyText;
+            noneItem.onclick = () => setCustomAssetSelect(selectId, '');
+            menuEl.appendChild(noneItem);
+
+            const listContainer = document.createElement('div');
+            sortedAssets.forEach(asset => {
+                const opt = document.createElement('div');
+                opt.className = 'custom-asset-option' + (asset.id === currentVal ? ' selected' : '');
+                opt.dataset.id = asset.id;
+
+                const amtColor = asset.amount < 0 ? '#d32f2f' : (asset.type === 'credit' ? '#d32f2f' : '#2e7d32');
+                const favStar = asset.isFavorite ? '⭐ ' : '';
+
+                opt.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+                        <span class="drag-handle" onclick="event.stopPropagation()" title="드래그하여 순서 변경">⋮⋮</span>
+                        ${getOwnerBadgeHTML(asset.owner)}
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${favStar}${asset.name}</span>
+                    </div>
+                    <span style="font-size: 12px; font-weight: 700; color: ${amtColor}; white-space: nowrap;">${Number(asset.amount).toLocaleString()}원</span>
+                `;
+                opt.onclick = () => setCustomAssetSelect(selectId, asset.id);
+                listContainer.appendChild(opt);
+            });
+            menuEl.appendChild(listContainer);
+
+            // 현재 선택된 값의 표시 이름(잔액 등) 최신화
+            const validVal = (currentVal && allAssets.find(a => a.id === currentVal)) ? currentVal : '';
+            setCustomAssetSelect(selectId, validVal);
+            if (wasOpen) menuEl.style.display = 'block';
+
+            if (typeof Sortable !== 'undefined') {
+                if (customDropdownSortables[selectId]) customDropdownSortables[selectId].destroy();
+                customDropdownSortables[selectId] = new Sortable(listContainer, {
+                    animation: 180,
+                    handle: '.drag-handle',
+                    ghostClass: 'sortable-ghost',
+                    onEnd: async function () {
+                        const batch = db.batch();
+                        let hasChanges = false;
+                        const items = listContainer.querySelectorAll('.custom-asset-option');
+                        items.forEach((itemEl, index) => {
+                            const assetId = itemEl.dataset.id;
+                            const existing = allAssets.find(a => a.id === assetId);
+                            if (existing && existing.dropdownOrder !== index) {
+                                batch.update(getCol("가계부자산목록").doc(assetId), { dropdownOrder: index });
+                                hasChanges = true;
+                            }
+                        });
+                        if (hasChanges) {
+                            try {
+                                await batch.commit();
+                            } catch (error) {
+                                alert("목록 순서 저장 중 오류가 발생했습니다: " + error.message);
+                            }
+                        }
+                    }
+                });
+            }
+        });
     }
 
     let assetSortables = [];
@@ -1813,7 +2024,7 @@
             changed = true;
         }
         if (match.linkedAssetId && allAssets.some(a => a.id === match.linkedAssetId) && (forceOverwrite || !assetSelect.value)) {
-            assetSelect.value = match.linkedAssetId;
+            setCustomAssetSelect('linked-asset', match.linkedAssetId);
             changed = true;
         }
 
