@@ -553,10 +553,17 @@
         document.getElementById('history-end-date').value = formatLocalDate(lastDay);
     })();
 
-    function showSection(section) {
+    let currentSection = 'home';
+
+    function showSection(section, isPopState = false) {
         const homeHub = document.getElementById('home-hub-section');
         const tabContainer = document.getElementById('main-tab-container');
         const tabs = ['ledger', 'calendar', 'asset', 'asset-history'];
+
+        if (!isPopState && currentSection !== section) {
+            history.pushState({ section: section }, '');
+        }
+        currentSection = section;
 
         tabs.forEach(t => {
             const btn = document.getElementById('btn-' + t);
@@ -584,6 +591,19 @@
         if (section === 'asset-history') renderAssetHistorySection();
         window.scrollTo(0, 0);
     }
+
+    window.addEventListener('popstate', (event) => {
+        const modal = document.getElementById('calendar-modal');
+        if (modal && modal.style.display === 'flex') {
+            modal.style.display = 'none';
+            return;
+        }
+        if (event.state && event.state.section) {
+            showSection(event.state.section, true);
+        } else if (currentUserUid) {
+            showSection('home', true);
+        }
+    });
 
     // ==========================================
     // [비밀번호 찾기 기능]
@@ -665,7 +685,8 @@
             document.getElementById('user-email-display').innerText = user.email;
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'block';
-            showSection('home'); 
+            history.replaceState({ section: 'home' }, '');
+            showSection('home', true); 
             initUserData(); 
         } else {
             document.getElementById('login-screen').style.display = 'block';
@@ -1379,10 +1400,14 @@
 
         addBtn.onclick = () => addRecordForDate(dateStr);
         modal.style.display = 'flex';
+        history.pushState({ section: currentSection, modal: true }, '');
     }
 
     function closeCalendarModal() {
         document.getElementById('calendar-modal').style.display = 'none';
+        if (history.state && history.state.modal) {
+            history.replaceState({ section: currentSection }, '');
+        }
     }
 
     function addRecordForDate(dateStr) {
