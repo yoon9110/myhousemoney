@@ -170,12 +170,13 @@
             </div>
         </div>
 
-        <div id="main-tab-container" class="tab-container" style="display: none;">
-            <button id="btn-home" class="tab-btn" onclick="showSection('home')" style="background-color: #ffffff; color: #333d4b; border: 1px solid #d9dfe6; flex: 0.85;">🏠 홈</button>
-            <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white;">📝 가계부</button>
-            <button id="btn-calendar" class="tab-btn" onclick="showSection('calendar')" style="background-color: #e8f5e9; color: #2e7d32;">📅 달력</button>
-            <button id="btn-asset" class="tab-btn" onclick="showSection('asset')" style="background-color: #e8f5e9; color: #2e7d32;">🏦 자산</button>
-            <button id="btn-asset-history" class="tab-btn" onclick="showSection('asset-history')" style="background-color: #e8f5e9; color: #2e7d32;">💳 계좌내역</button>
+        <div id="main-tab-container" class="tab-container" style="display: none; gap: 4px; padding: 4px;">
+            <button id="btn-home" class="tab-btn" onclick="showSection('home')" style="background-color: #ffffff; color: #333d4b; border: 1px solid #d9dfe6; font-size: 11.5px; padding: 9px 2px;">🏠 홈</button>
+            <button id="btn-ledger" class="tab-btn" onclick="showSection('ledger')" style="background-color: #2e7d32; color: white; font-size: 11.5px; padding: 9px 2px;">📝 가계부</button>
+            <button id="btn-transfer" class="tab-btn" onclick="showSection('transfer')" style="background-color: #e8f5e9; color: #2e7d32; font-size: 11.5px; padding: 9px 2px;">🔄 이체</button>
+            <button id="btn-calendar" class="tab-btn" onclick="showSection('calendar')" style="background-color: #e8f5e9; color: #2e7d32; font-size: 11.5px; padding: 9px 2px;">📅 달력</button>
+            <button id="btn-asset" class="tab-btn" onclick="showSection('asset')" style="background-color: #e8f5e9; color: #2e7d32; font-size: 11.5px; padding: 9px 2px;">🏦 자산</button>
+            <button id="btn-asset-history" class="tab-btn" onclick="showSection('asset-history')" style="background-color: #e8f5e9; color: #2e7d32; font-size: 11.5px; padding: 9px 2px;">💳 계좌</button>
         </div>
 
         <!-- ================= [홈 카테고리 선택 화면] ================= -->
@@ -188,7 +189,15 @@
                     <div>
                         <div class="hub-icon-badge" style="background: #e8f5e9;">📝</div>
                         <div class="hub-card-title"><span>가계부</span><span style="color: #2e7d32; font-size: 15px;">➔</span></div>
-                        <div class="hub-card-desc">수입·지출 입력, 자산 이체 및 월별 내역 요약</div>
+                        <div class="hub-card-desc">수입·지출 입력 및 월별 결제 내역 요약</div>
+                    </div>
+                </div>
+
+                <div class="home-category-card" onclick="showSection('transfer')" style="background: linear-gradient(180deg, #f2f8ff 0%, #ffffff 100%); border-color: #90caf9;">
+                    <div>
+                        <div class="hub-icon-badge" style="background: #e3f2fd;">🔄</div>
+                        <div class="hub-card-title"><span>자산 이체</span><span style="color: #1565c0; font-size: 15px;">➔</span></div>
+                        <div class="hub-card-desc">계좌 간 자금 이동, 카드대금 납부 및 고정이체</div>
                     </div>
                 </div>
 
@@ -208,11 +217,11 @@
                     </div>
                 </div>
 
-                <div class="home-category-card" onclick="showSection('asset-history')" style="background: linear-gradient(180deg, #faf6ff 0%, #ffffff 100%); border-color: #e1bee7;">
+                <div class="home-category-card" onclick="showSection('asset-history')" style="grid-column: span 2; background: linear-gradient(180deg, #faf6ff 0%, #ffffff 100%); border-color: #e1bee7;">
                     <div>
                         <div class="hub-icon-badge" style="background: #f3e5f5;">💳</div>
                         <div class="hub-card-title"><span>계좌내역</span><span style="color: #7b1fa2; font-size: 15px;">➔</span></div>
-                        <div class="hub-card-desc">은행·카드별 기간 지정 입출금 및 이체 내역</div>
+                        <div class="hub-card-desc">은행·카드별 기간 지정 입출금 및 이체 내역 조회</div>
                     </div>
                 </div>
             </div>
@@ -287,15 +296,38 @@
                 </div>
             </div>
 
-            <!-- 2. 자산 이체 카드 -->
-            <div class="section-card-blue">
+            <!-- 2. 결제 목록 요약 및 엑셀 저장 바 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e8eb;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2 style="color: #191f28; margin: 0; font-size: 18px; font-weight: 800;">결제 목록 요약</h2>
+                    <button onclick="exportExcel()" style="width: auto; padding: 5px 10px; margin: 0; background-color: #2e7d32; font-size: 12px; border-radius: 8px;">📥 엑셀 저장</button>
+                </div>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 6px 8px; font-size: 13px; margin: 0;">
+                    <button onclick="document.getElementById('filter-month').value=''; currentCategoryFilter=null; renderList();" style="width: auto; padding: 7px 10px; margin: 0; background-color: #8b95a1; font-size: 12px; border-radius: 8px;">전체</button>
+                </div>
+            </div>
+
+            <!-- 결제 내역 키워드 검색창 -->
+            <div style="display: flex; gap: 6px; margin-top: 12px;">
+                <input type="text" id="search-keyword" oninput="renderList()" placeholder="🔍 결제처, 항목, 메모 검색..." style="padding: 9px 12px; font-size: 14px;">
+                <button onclick="document.getElementById('search-keyword').value=''; renderList();" style="width: auto; padding: 9px 13px; margin: 0; background-color: #8b95a1; font-size: 12px; white-space: nowrap; border-radius: 10px;">초기화</button>
+            </div>
+            
+            <div id="summary-box" style="margin-top: 12px; margin-bottom: 14px;"></div>
+            <div id="payment-list"></div>
+        </div>
+
+        <!-- ================= [자산 이체 섹션] ================= -->
+        <div id="transfer-section" style="display: none;">
+            <div class="section-card-blue" style="margin-bottom: 0;">
                 <div class="card-title-row">
                     <h3 class="card-title" style="color: #1565c0;">🔄 자산 이체 (계좌 이동 · 카드대금)</h3>
                 </div>
                 
                 <!-- 고정 이체 원클릭 영역 -->
                 <div class="sub-pill-box-blue">
-                    <div style="font-size: 12px; color: #0d47a1; font-weight: 700; margin-bottom: 5px;">📌 고정 이체 원클릭 실행 (클릭 시 선택된 날짜로 즉시 이체)</div>
+                    <div style="font-size: 12px; color: #0d47a1; font-weight: 700; margin-bottom: 5px;">📌 고정 이체 원클릭 실행 (클릭 시 아래 날짜로 즉시 이체)</div>
                     <div id="fixed-transfers-container" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
                 </div>
 
@@ -303,6 +335,12 @@
                 <div class="sub-pill-box-blue">
                     <div style="font-size: 12px; color: #1976d2; font-weight: 700; margin-bottom: 5px;">⭐ 즐겨찾기 이체 구간 (클릭 시 출금/입금 자산 선택)</div>
                     <div id="favorite-routes-container" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                </div>
+
+                <!-- 이체 날짜 선택 -->
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="color: #1565c0;">📅 이체 날짜</label>
+                    <input type="date" id="transfer-date" style="background: white;">
                 </div>
 
                 <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: center;">
@@ -334,27 +372,6 @@
                 </div>
                 <button onclick="saveFixedTransfer()" style="background-color: #ffffff; color: #1565c0; border: 1px solid #90caf9; font-size: 13px; padding: 10px; margin-top: 8px;">⭐ 현재 입력내용 고정이체로 저장 (별칭 지정)</button>
             </div>
-
-            <!-- 3. 결제 목록 요약 및 엑셀 저장 바 -->
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 2px solid #e5e8eb;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <h2 style="color: #191f28; margin: 0; font-size: 18px; font-weight: 800;">결제 목록 요약</h2>
-                    <button onclick="exportExcel()" style="width: auto; padding: 5px 10px; margin: 0; background-color: #2e7d32; font-size: 12px; border-radius: 8px;">📥 엑셀 저장</button>
-                </div>
-                <div style="display: flex; gap: 5px; align-items: center;">
-                    <input type="month" id="filter-month" onchange="currentCategoryFilter=null; renderList();" style="width: auto; padding: 6px 8px; font-size: 13px; margin: 0;">
-                    <button onclick="document.getElementById('filter-month').value=''; currentCategoryFilter=null; renderList();" style="width: auto; padding: 7px 10px; margin: 0; background-color: #8b95a1; font-size: 12px; border-radius: 8px;">전체</button>
-                </div>
-            </div>
-
-            <!-- 결제 내역 키워드 검색창 -->
-            <div style="display: flex; gap: 6px; margin-top: 12px;">
-                <input type="text" id="search-keyword" oninput="renderList()" placeholder="🔍 결제처, 항목, 메모 검색..." style="padding: 9px 12px; font-size: 14px;">
-                <button onclick="document.getElementById('search-keyword').value=''; renderList();" style="width: auto; padding: 9px 13px; margin: 0; background-color: #8b95a1; font-size: 12px; white-space: nowrap; border-radius: 10px;">초기화</button>
-            </div>
-            
-            <div id="summary-box" style="margin-top: 12px; margin-bottom: 14px;"></div>
-            <div id="payment-list"></div>
         </div>
 
         <!-- ================= [지출 달력 섹션] ================= -->
@@ -543,6 +560,7 @@
 
     const today = new Date();
     document.getElementById('date').value = formatLocalDate(today);
+    document.getElementById('transfer-date').value = formatLocalDate(today);
     document.getElementById('filter-month').value = formatLocalDate(today).substring(0, 7);
 
     // 기본 조회 기간을 이번 달로 초기화
@@ -558,7 +576,7 @@
     function showSection(section, isPopState = false) {
         const homeHub = document.getElementById('home-hub-section');
         const tabContainer = document.getElementById('main-tab-container');
-        const tabs = ['ledger', 'calendar', 'asset', 'asset-history'];
+        const tabs = ['ledger', 'transfer', 'calendar', 'asset', 'asset-history'];
 
         if (!isPopState && currentSection !== section) {
             history.pushState({ section: section }, '');
@@ -864,7 +882,7 @@
             return;
         }
 
-        const targetDate = document.getElementById('date').value || formatLocalDate(new Date());
+        const targetDate = document.getElementById('transfer-date').value || formatLocalDate(new Date());
         const amountNum = Number(item.amount);
         const displayAlias = item.alias || `${fromAsset.name} ➔ ${toAsset.name}`;
 
@@ -880,15 +898,7 @@
             const toPrefix = toAsset.owner === 'husband' ? '남편' : (toAsset.owner === 'wife' ? '아내' : '공동');
 
             await getCol("가계부결제내역").add({
-                date: targetDate,
-                merchant: `[${fromPrefix}]${fromAsset.name} ➔ [${toPrefix}]${toAsset.name}`,
-                amount: amountNum,
-                category: "자산이체",
-                type: 'transfer',
-                fromAssetId: fromAsset.id,
-                toAssetId: toAsset.id,
-                memo: item.memo || displayAlias,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                date: document.getElementById('transfer-date').value || formatLocalDate(new Date()), merchant: `[${fromPrefix}]${fromAsset.name} ➔ [${toPrefix}]${toAsset.name}`, amount: amount, category: "자산이체", type: 'transfer', fromAssetId: fromId, toAssetId: toId, memo: memoStr, timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             alert(`✅ '${displayAlias}' 이체가 완료되었습니다!`);
         } catch (error) {
