@@ -1703,7 +1703,7 @@
             matchedItems.push(data);
         });
 
-        // 최근에 입력한 시간(timestamp) 순서대로 정렬
+        // 날짜 최신순으로 정렬하되, 같은 날짜 내에서는 입력한 시간(timestamp) 최신순으로 정렬
         const getInputTime = (item) => {
             const ts = item.timestamp;
             if (ts === null) return Number.MAX_SAFE_INTEGER;
@@ -1714,9 +1714,9 @@
             return 0;
         };
         matchedItems.sort((a, b) => {
-            const diff = getInputTime(b) - getInputTime(a);
-            if (diff !== 0) return diff;
-            return (b.date || '').localeCompare(a.date || '');
+            const dateDiff = (b.date || '').localeCompare(a.date || '');
+            if (dateDiff !== 0) return dateDiff;
+            return getInputTime(b) - getInputTime(a);
         });
 
         if (matchedItems.length === 0) {
