@@ -316,6 +316,7 @@
             
             <div id="summary-box" style="margin-top: 12px; margin-bottom: 14px;"></div>
             <div id="payment-list"></div>
+            <div id="payment-list-more"></div>
         </div>
 
         <!-- ================= [자산 이체 섹션] ================= -->
@@ -1685,7 +1686,9 @@
         summaryHTML += `</div>`;
         summaryBox.innerHTML = summaryHTML;
 
-        let matchCount = 0;
+        const moreContainer = document.getElementById("payment-list-more");
+        const matchedItems = [];
+
         allPayments.forEach((data) => {
             if (filterMonth && !data.date.startsWith(filterMonth)) return;
             const catName = data.category || '기타';
@@ -1697,8 +1700,36 @@
                 const memoText = (data.memo || '').toLowerCase();
                 if (!mText.includes(keyword) && !cText.includes(keyword) && !memoText.includes(keyword)) return;
             }
+            matchedItems.push(data);
+        });
 
-            matchCount++;
+        // 최근에 입력한 시간(timestamp) 순서대로 정렬
+        const getInputTime = (item) => {
+            const ts = item.timestamp;
+            if (ts === null) return Number.MAX_SAFE_INTEGER;
+            if (!ts) return 0;
+            if (typeof ts === 'number') return ts;
+            if (typeof ts.toMillis === 'function') return ts.toMillis();
+            if (typeof ts.seconds === 'number') return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1000000);
+            return 0;
+        };
+        matchedItems.sort((a, b) => {
+            const diff = getInputTime(b) - getInputTime(a);
+            if (diff !== 0) return diff;
+            return (b.date || '').localeCompare(a.date || '');
+        });
+
+        if (matchedItems.length === 0) {
+            listContainer.innerHTML = `<div style="text-align: center; color: #888; padding: 25px 10px; font-size: 14px;">표시할 내역이 없습니다.</div>`;
+            if (moreContainer) moreContainer.innerHTML = '';
+            return;
+        }
+
+        const PREVIEW_LIMIT = 5;
+        const visibleItems = window.isPaymentListExpanded ? matchedItems : matchedItems.slice(0, PREVIEW_LIMIT);
+
+        visibleItems.forEach((data) => {
+            const catName = data.category || '기타';
             const amountNum = Number(data.amount) || 0;
             let amountStr = ''; let typeTag = '';
             
@@ -1732,8 +1763,15 @@
             listContainer.appendChild(listItem);
         });
 
-        if (matchCount === 0) {
-            listContainer.innerHTML = `<div style="text-align: center; color: #888; padding: 25px 10px; font-size: 14px;">표시할 내역이 없습니다.</div>`;
+        if (moreContainer) {
+            if (matchedItems.length <= PREVIEW_LIMIT) {
+                moreContainer.innerHTML = '';
+            } else if (window.isPaymentListExpanded) {
+                moreContainer.innerHTML = `<button type="button" onclick="window.isPaymentListExpanded = false; renderList();" style="background-color: #f2f4f6; color: #333d4b; border: 1px solid #d9dfe6; font-size: 13.5px; padding: 11px; margin-top: 2px;">🔼 결제 목록 접기 (최근 ${PREVIEW_LIMIT}건만 보기)</button>`;
+            } else {
+                const remainCount = matchedItems.length - PREVIEW_LIMIT;
+                moreContainer.innerHTML = `<button type="button" onclick="window.isPaymentListExpanded = true; renderList();" style="background-color: #f1f8e9; color: #1b5e20; border: 1px solid #a5d6a7; font-size: 13.5px; padding: 11px; margin-top: 2px;">🔽 결제 목록 더보기 (+${remainCount}건 더 보기 · 총 ${matchedItems.length}건)</button>`;
+            }
         }
     }
 
