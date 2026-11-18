@@ -316,6 +316,7 @@
             
             <div id="summary-box" style="margin-top: 12px; margin-bottom: 14px;"></div>
             <div id="payment-list"></div>
+            <div id="payment-list-more-wrap" style="margin-top: 4px;"></div>
         </div>
 
         <!-- ================= [자산 이체 섹션] ================= -->
@@ -2094,7 +2095,89 @@
             });
     }
 
-  // limit을 주면 상위 N개(최근 5개), 안 주면 지금까지 사용한 전체 고유 목록 반환
+  // ==========================================
+    // [결제 목록 입력 시간순 정렬 & 더보기 펼치기/접기]
+    // ==========================================
+    let isPaymentListExpanded = false;
+    const PAYMENT_PREVIEW_COUNT = 5; // 기본으로 보여줄 최근 입력 건수
+
+    function getPaymentInputTime(item) {
+        if (!item) return 0;
+        const ts = item.timestamp;
+        if (ts === null) return Number.MAX_SAFE_INTEGER; // 방금 입력한 항목을 최상단에 즉시 표시
+        if (!ts) return 0;
+        if (typeof ts === 'number') return ts;
+        if (typeof ts.toMillis === 'function') return ts.toMillis();
+        if (typeof ts.seconds === 'number') return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1000000);
+        return 0;
+    }
+
+    function togglePaymentListExpand() {
+        isPaymentListExpanded = !isPaymentListExpanded;
+        applyPaymentListOrderAndCollapse();
+    }
+
+    function applyPaymentListOrderAndCollapse() {
+        const listEl = document.getElementById('payment-list');
+        const moreWrap = document.getElementById('payment-list-more-wrap');
+        if (!listEl || !moreWrap) return;
+
+        const allDivs = Array.from(listEl.children);
+        const itemCards = allDivs.filter(div => div.innerHTML.includes('deleteData(') || div.innerHTML.includes('editData('));
+
+        if (itemCards.length === 0) {
+            moreWrap.innerHTML = '';
+            return;
+        }
+
+        // 1. 지출·수입을 입력한 시간(timestamp) 최신순으로 재정렬
+        itemCards.sort((a, b) => {
+            const idMatchA = a.innerHTML.match(/(?:deleteData|editData)\('([^']+)'/);
+            const idMatchB = b.innerHTML.match(/(?:deleteData|editData)\('([^']+)'/);
+            const itemA = idMatchA ? allPayments.find(p => p.id === idMatchA[1]) : null;
+            const itemB = idMatchB ? allPayments.find(p => p.id === idMatchB[1]) : null;
+            return getPaymentInputTime(itemB) - getPaymentInputTime(itemA);
+        });
+
+        itemCards.forEach(card => listEl.appendChild(card));
+
+        // 2. 5건 초과 시 더보기 / 접기 버튼 적용
+        const totalCount = itemCards.length;
+        if (totalCount <= PAYMENT_PREVIEW_COUNT) {
+            itemCards.forEach(card => { card.style.display = ''; });
+            moreWrap.innerHTML = '';
+            return;
+        }
+
+        itemCards.forEach((card, idx) => {
+            card.style.display = (isPaymentListExpanded || idx < PAYMENT_PREVIEW_COUNT) ? '' : 'none';
+        });
+
+        const hiddenCount = totalCount - PAYMENT_PREVIEW_COUNT;
+        if (isPaymentListExpanded) {
+            moreWrap.innerHTML = `
+                <button onclick="togglePaymentListExpand()" style="background-color: #f2f4f6; color: #333d4b; border: 1px solid #d9dfe6; font-size: 13.5px; padding: 11px; margin-top: 2px;">
+                    🔼 결제 목록 접기 (최근 ${PAYMENT_PREVIEW_COUNT}건만 보기)
+                </button>
+            `;
+        } else {
+            moreWrap.innerHTML = `
+                <button onclick="togglePaymentListExpand()" style="background-color: #f1f8e9; color: #1b5e20; border: 1px solid #a5d6a7; font-size: 13.5px; padding: 11px; margin-top: 2px;">
+                    🔽 결제 목록 더보기 (+${hiddenCount}건 더 보기 · 총 ${totalCount}건)
+                </button>
+            `;
+        }
+    }
+
+    if (typeof renderList === 'function') {
+        const _origRenderList = renderList;
+        renderList = function () {
+            _origRenderList.apply(this, arguments);
+            applyPaymentListOrderAndCollapse();
+        };
+    }
+
+    // limit을 주면 상위 N개(최근 5개), 안 주면 지금까지 사용한 전체 고유 목록 반환
     function getAllUniqueValues(field, limit) {
         const sorted = getSortedNonTransferPayments().filter(p => p[field] && String(p[field]).trim() !== '');
         const unique = [];
