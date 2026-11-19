@@ -289,11 +289,30 @@
                 </div>
                 <button id="save-fixed-btn" onclick="saveFixedExpense()" style="background-color: #f1f8e9; color: #2e7d32; border: 1px solid #a5d6a7; font-size: 13px; padding: 10px; margin-top: 8px;">⭐ 현재 입력내용 고정지출로 저장 (별칭 지정)</button>
 
+                <div id="schedule-action-row" style="display: flex; gap: 6px; margin-top: 8px; align-items: stretch;">
+                    <select id="schedule-repeat" style="flex: 1; font-size: 13px; padding: 9px 10px; background: #fff8e1; border: 1px solid #ffe082; color: #e65100; font-weight: 700;">
+                        <option value="none">1회만 (반복 안 함)</option>
+                        <option value="monthly">🔁 매월 반복</option>
+                        <option value="weekly">🔁 매주 반복</option>
+                        <option value="yearly">🔁 매년 반복</option>
+                    </select>
+                    <button id="save-schedule-btn" onclick="saveScheduledExpense()" style="flex: 1.15; background-color: #fff3e0; color: #e65100; border: 1px solid #ffcc80; font-size: 13px; padding: 10px; margin-top: 0;">⏰ 선택한 날짜로 지출 예약</button>
+                </div>
+
                 <div id="edit-buttons" style="display: none; gap: 8px;">
                     <button onclick="saveData('expense')" style="flex: 1; background-color: #f04452; margin-top: 0;">지출로 수정</button>
                     <button onclick="saveData('income')" style="flex: 1; background-color: #3182f6; margin-top: 0;">수입으로 수정</button>
                     <button onclick="cancelEdit()" style="flex: 1; background-color: #8b95a1; margin-top: 0;">취소</button>
                 </div>
+            </div>
+
+            <!-- 예약된 자동 지출 목록 (예약 건이 있을 때만 자동 표시) -->
+            <div id="scheduled-expenses-box" class="section-card" style="display: none; background: #fffdf7; border-color: #ffe0b2; padding: 14px 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #e65100;">⏰ 예약된 자동 지출 목록</h4>
+                    <span id="scheduled-count-badge" style="font-size: 11px; background: #ffe0b2; color: #e65100; padding: 2px 8px; border-radius: 99px; font-weight: 700;">0건</span>
+                </div>
+                <div id="scheduled-expenses-list" style="display: flex; flex-direction: column; gap: 7px;"></div>
             </div>
 
             <!-- 2. 결제 목록 요약 및 엑셀 저장 바 -->
@@ -537,6 +556,7 @@
     let unsubFixed = null;
     let unsubFixedTransfers = null;
     let unsubBudget = null;
+    let unsubScheduled = null;
 
     let editingId = null;
     let allPayments = []; 
@@ -546,7 +566,10 @@
     let favoriteRoutes = []; 
     let fixedExpenses = [];
     let fixedTransfers = [];
+    let scheduledExpenses = [];
     let monthlyBudget = 0;
+    let isAssetsLoaded = false;
+    let isScheduledLoaded = false;
     let selectedHistoryAssetId = null;
 
     let currentCalYear = new Date().getFullYear();
@@ -674,7 +697,7 @@
         if (!user) return;
 
         try {
-           const collections = ["가계부결제내역", "가계부자산목록", "가계부이체구간", "가계부고정지출", "가계부고정이체", "가계부설정"];
+           const collections = ["가계부결제내역", "가계부자산목록", "가계부이체구간", "가계부고정지출", "가계부고정이체", "가계부지출예약", "가계부설정"];
             for (const colName of collections) {
                 const snapshot = await getCol(colName).get();
                 const batch = db.batch();
@@ -747,13 +770,16 @@
                 if (orderA !== orderB) return orderA - orderB;
                 return b.timestamp - a.timestamp;
             });
+            isAssetsLoaded = true;
             updateAssetDropdowns();
             renderFavoriteRoutes();
             renderFixedTransfers();
             renderFixedExpenses();
+            renderScheduledExpenses();
             renderList(); 
             renderAssetScreen(bankTotal, investTotal, creditTotal, husbandTotal, wifeTotal, commonTotal);
             renderAssetHistorySection();
+            processDueScheduledExpenses();
         });
 
         const sortByOrder = (a, b) => {
@@ -792,6 +818,234 @@
             monthlyBudget = doc.exists ? (Number(doc.data().monthlyBudget) || 0) : 0;
             renderList();
         });
+
+        if (unsubScheduled) unsubScheduled();
+        unsubScheduled = getCol("가계부지출예약").orderBy("nextDate", "asc").onSnapshot((snapshot) => {
+            scheduledExpenses = [];
+            snapshot.forEach(doc => { scheduledExpenses.push({ id: doc.id, ...doc.data() }); });
+            isScheduledLoaded = true;
+            renderScheduledExpenses();
+            processDueScheduledExpenses();
+        });
+    }
+
+    // ==========================================
+    // [지출 예약 및 주기별 자동 반복 실행]
+    // ==========================================
+    function getRepeatLabel(repeatType) {
+        if (repeatType === 'monthly') return '매월 반복';
+        if (repeatType === 'weekly') return '매주 반복';
+        if (repeatType === 'yearly') return '매년 반복';
+        return '1회 예약';
+    }
+
+    function getNextScheduleDate(dateStr, repeatType, anchorDay) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const baseDay = anchorDay || d;
+        if (repeatType === 'weekly') {
+            return formatLocalDate(new Date(y, m - 1, d + 7));
+        }
+        if (repeatType === 'monthly') {
+            const targetYear = y + Math.floor(m / 12);
+            const targetMonth = m % 12;
+            const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+            return formatLocalDate(new Date(targetYear, targetMonth, Math.min(baseDay, lastDay)));
+        }
+        if (repeatType === 'yearly') {
+            const targetYear = y + 1;
+            const lastDay = new Date(targetYear, m, 0).getDate();
+            return formatLocalDate(new Date(targetYear, m - 1, Math.min(baseDay, lastDay)));
+        }
+        return null;
+    }
+
+    async function saveScheduledExpense() {
+        const date = document.getElementById('date').value;
+        const merchant = document.getElementById('merchant').value.trim();
+        const amount = Number(document.getElementById('amount').value);
+        const category = document.getElementById('category').value.trim() || '예약지출';
+        const linkedAssetId = document.getElementById('linked-asset').value;
+        const repeat = document.getElementById('schedule-repeat').value;
+
+        if (!date || !merchant || !amount || amount <= 0) {
+            alert("예약할 날짜, 결제처, 금액을 모두 입력해주세요!");
+            return;
+        }
+
+        const todayStr = formatLocalDate(new Date());
+        const anchorDay = Number(date.split('-')[2]);
+        let nextDate = date;
+        let runTodayImmediately = false;
+
+        if (date <= todayStr) {
+            if (repeat === 'none') {
+                alert(`예약 기능은 오늘(${todayStr})보다 이후 날짜를 선택하거나, 반복 주기를 선택했을 때 사용할 수 있습니다.`);
+                return;
+            }
+            const nextCycle = getNextScheduleDate(date, repeat, anchorDay);
+            if (!confirm(`선택하신 날짜(${date})는 오늘 또는 이미 지난 날짜입니다.\n\n지금 즉시 1회 지출을 등록하고, 다음 주기(${nextCycle})부터 [${getRepeatLabel(repeat)}]으로 예약할까요?`)) {
+                return;
+            }
+            runTodayImmediately = true;
+            nextDate = nextCycle;
+        }
+
+        try {
+            if (runTodayImmediately) {
+                if (linkedAssetId) {
+                    const targetAsset = allAssets.find(a => a.id === linkedAssetId);
+                    if (targetAsset) {
+                        await getCol("가계부자산목록").doc(linkedAssetId).update({ amount: targetAsset.amount - amount });
+                    }
+                }
+                await getCol("가계부결제내역").add({
+                    date: date,
+                    merchant: merchant,
+                    amount: amount,
+                    category: category,
+                    type: 'expense',
+                    linkedAssetId: linkedAssetId || '',
+                    memo: `⏰ 자동예약 (${getRepeatLabel(repeat)})`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+
+            await getCol("가계부지출예약").add({
+                nextDate: nextDate,
+                anchorDay: anchorDay,
+                merchant: merchant,
+                amount: amount,
+                category: category,
+                linkedAssetId: linkedAssetId || '',
+                repeat: repeat,
+                timestamp: Date.now()
+            });
+
+            alert(`⏰ [${merchant}] ${amount.toLocaleString()}원 지출이 ${nextDate}로 예약되었습니다! (${getRepeatLabel(repeat)})\n해당 날짜가 되면 자동으로 지출 입력 및 자산 차감이 실행됩니다.`);
+            cancelEdit();
+            document.getElementById('schedule-repeat').value = 'none';
+        } catch (error) {
+            alert("지출 예약 저장 실패: " + error.message);
+        }
+    }
+
+    function renderScheduledExpenses() {
+        const box = document.getElementById('scheduled-expenses-box');
+        const listEl = document.getElementById('scheduled-expenses-list');
+        const badgeEl = document.getElementById('scheduled-count-badge');
+        if (!box || !listEl) return;
+
+        if (scheduledExpenses.length === 0) {
+            box.style.display = 'none';
+            listEl.innerHTML = '';
+            return;
+        }
+
+        box.style.display = 'block';
+        if (badgeEl) badgeEl.innerText = `${scheduledExpenses.length}건`;
+        listEl.innerHTML = '';
+
+        scheduledExpenses.forEach(item => {
+            const targetAsset = item.linkedAssetId ? allAssets.find(a => a.id === item.linkedAssetId) : null;
+            const assetText = targetAsset ? ` · 🔗 ${getOwnerBadgeHTML(targetAsset.owner)}${targetAsset.name}` : '';
+            const repeatText = getRepeatLabel(item.repeat);
+
+            const row = document.createElement('div');
+            row.style = "background: #ffffff; border: 1px solid #ffe0b2; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;";
+            row.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 11.5px; color: #e65100; font-weight: 700; margin-bottom: 3px;">
+                        📅 예정일: ${item.nextDate} <span style="background: #fff3e0; border: 1px solid #ffcc80; padding: 1px 6px; border-radius: 4px; margin-left: 4px;">${repeatText}</span>
+                    </div>
+                    <div style="font-size: 14px; color: #191f28; margin-bottom: 2px;">
+                        <strong>${item.merchant}</strong> · <strong style="color: #d32f2f;">-${Number(item.amount).toLocaleString()}원</strong>
+                    </div>
+                    <div style="font-size: 12px; color: #6b7684; display: flex; align-items: center; flex-wrap: wrap;">
+                        [${item.category || '예약지출'}]${assetText}
+                    </div>
+                </div>
+                <button type="button" onclick="deleteScheduledExpense('${item.id}')" style="width: auto; margin: 0; padding: 6px 10px; background-color: #8b95a1; font-size: 11.5px; border-radius: 6px; white-space: nowrap;">예약취소</button>
+            `;
+            listEl.appendChild(row);
+        });
+    }
+
+    async function deleteScheduledExpense(id) {
+        if (confirm("이 지출 예약을 취소하시겠습니까?")) {
+            await getCol("가계부지출예약").doc(id).delete();
+        }
+    }
+
+    let isProcessingSchedules = false;
+    const processedScheduleKeys = new Set();
+
+    async function processDueScheduledExpenses() {
+        if (!isAssetsLoaded || !isScheduledLoaded || isProcessingSchedules) return;
+        if (scheduledExpenses.length === 0) return;
+
+        const todayStr = formatLocalDate(new Date());
+        const dueItems = scheduledExpenses.filter(item => item.nextDate && item.nextDate <= todayStr);
+        if (dueItems.length === 0) return;
+
+        isProcessingSchedules = true;
+        let executedCount = 0;
+
+        try {
+            for (const item of dueItems) {
+                let currentDueDate = item.nextDate;
+                const amtNum = Number(item.amount) || 0;
+                let safetyLoop = 0;
+
+                while (currentDueDate && currentDueDate <= todayStr && safetyLoop < 24) {
+                    safetyLoop++;
+                    const execKey = `${item.id}_${currentDueDate}`;
+                    if (processedScheduleKeys.has(execKey)) break;
+                    processedScheduleKeys.add(execKey);
+
+                    await getCol("가계부결제내역").add({
+                        date: currentDueDate,
+                        merchant: item.merchant,
+                        amount: amtNum,
+                        category: item.category || '예약지출',
+                        type: 'expense',
+                        linkedAssetId: item.linkedAssetId || '',
+                        memo: item.repeat && item.repeat !== 'none' ? `⏰ 자동예약 (${getRepeatLabel(item.repeat)})` : '⏰ 예약지출',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    if (item.linkedAssetId) {
+                        const targetAsset = allAssets.find(a => a.id === item.linkedAssetId);
+                        if (targetAsset) {
+                            targetAsset.amount -= amtNum;
+                            await getCol("가계부자산목록").doc(targetAsset.id).update({ amount: targetAsset.amount });
+                        }
+                    }
+
+                    executedCount++;
+
+                    if (!item.repeat || item.repeat === 'none') {
+                        currentDueDate = null;
+                        break;
+                    } else {
+                        currentDueDate = getNextScheduleDate(currentDueDate, item.repeat, item.anchorDay);
+                    }
+                }
+
+                if (!currentDueDate) {
+                    await getCol("가계부지출예약").doc(item.id).delete();
+                } else if (currentDueDate !== item.nextDate) {
+                    await getCol("가계부지출예약").doc(item.id).update({ nextDate: currentDueDate });
+                }
+            }
+
+            if (executedCount > 0) {
+                alert(`⏰ 예약된 지출 ${executedCount}건이 날짜가 되어 자동으로 등록되었습니다!`);
+            }
+        } catch (error) {
+            console.error("예약 지출 자동 처리 오류:", error);
+        } finally {
+            isProcessingSchedules = false;
+        }
     }
 
     // ==========================================
@@ -1446,6 +1700,7 @@
         setCustomAssetSelect('linked-asset', linkedAssetId || '');
         document.getElementById('input-buttons').style.display = "none";
         document.getElementById('save-fixed-btn').style.display = "none";
+        document.getElementById('schedule-action-row').style.display = "none";
         document.getElementById('edit-buttons').style.display = "flex";
         
         const inputBox = document.getElementById('ledger-input-box');
@@ -1456,6 +1711,7 @@
         editingId = null;
         document.getElementById('input-buttons').style.display = "flex";
         document.getElementById('save-fixed-btn').style.display = "block";
+        document.getElementById('schedule-action-row').style.display = "flex";
         document.getElementById('edit-buttons').style.display = "none";
         document.getElementById('merchant').value = ''; document.getElementById('amount').value = '';
         document.getElementById('category').value = ''; setCustomAssetSelect('linked-asset', '');
