@@ -4,10 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>우리집 가계부 & 자산</title>
+<meta name="theme-color" content="#2e7d32">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
     * { box-sizing: border-box; }
-    body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; background-color: #f2f4f7; color: #191f28; margin: 0; padding: 14px; line-height: 1.45; }
+    body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; background-color: #f2f4f7; color: #191f28; margin: 0; padding: 14px 14px 78px 14px; line-height: 1.45; }
+
+    /* 하단 배너 광고 영역 (버튼을 가리지 않도록 하단 여백 확보) */
+    .bottom-ad-banner { position: fixed; left: 0; right: 0; bottom: 0; height: 58px; background: #ffffff; border-top: 1px solid #e5e8eb; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 0 12px; }
+    .bottom-ad-inner { width: 100%; max-width: 620px; height: 46px; background: linear-gradient(90deg, #f4fbf5 0%, #eef6ff 100%); border: 1px dashed #b7d7be; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 12px; color: #333d4b; }
     .container { max-width: 620px; margin: 0 auto; background: #ffffff; padding: 22px 18px; border-radius: 22px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.05); }
     
     /* 상단 헤더 & 탭 바 */
@@ -150,7 +160,24 @@
     <!-- 1. 로그인/회원가입 화면 -->
     <div id="login-screen">
         <div class="section-card" style="background: #f8faf9; margin-bottom: 0;">
-            <p style="text-align: center; color: #1b5e20; font-size: 15px; margin-top: 0; margin-bottom: 16px; font-weight: 800;">개인 계정 로그인 및 회원가입</p>
+            <p style="text-align: center; color: #1b5e20; font-size: 15px; margin-top: 0; margin-bottom: 14px; font-weight: 800;">개인 계정 로그인 및 회원가입</p>
+
+            <button type="button" onclick="googleLogin()" style="background-color: #ffffff; color: #191f28; border: 1.5px solid #d9dfe6; margin-top: 0; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 9px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                <span>Google 계정으로 간편 로그인</span>
+            </button>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: #8b95a1; font-size: 12px;">
+                <div style="flex: 1; height: 1px; background: #e5e8eb;"></div>
+                <span>또는 이메일로 로그인</span>
+                <div style="flex: 1; height: 1px; background: #e5e8eb;"></div>
+            </div>
+
             <div class="form-group">
                 <input type="email" id="email" placeholder="이메일 주소 (예: my@email.com)">
             </div>
@@ -753,6 +780,24 @@
         if(!email || !pw) { alert("이메일과 비밀번호를 입력해주세요."); return; }
         auth.signInWithEmailAndPassword(email, pw).then(() => {
         }).catch((error) => { alert("이메일이나 비밀번호가 틀렸습니다!"); });
+    }
+
+    function googleLogin() {
+        if (window.location.protocol === 'file:') {
+            alert("구글 보안 정책상 내 컴퓨터 폴더에서 직접 연 파일(file://)에서는 구글 로그인 팝업이 열리지 않습니다.\n\n깃허브 인터넷 주소(https://yoon9110.github.io/myhousemoney/)나 안드로이드 앱에서 실행하면 바로 로그인됩니다!");
+            return;
+        }
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        auth.signInWithPopup(provider).catch((error) => {
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/operation-not-supported-in-this-environment') {
+                auth.signInWithRedirect(provider);
+            } else if (error.code === 'auth/unauthorized-domain') {
+                alert("파이어베이스 Authentication > 설정 > 승인된 도메인에 현재 주소를 추가해야 구글 로그인이 열립니다.");
+            } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                alert("구글 로그인 실패: " + error.message);
+            }
+        });
     }
 
     function logout() {
@@ -2634,6 +2679,26 @@
             togglePaymentListVisibility();
         }
     })();
+</script>
+
+<!-- ================= [하단 배너 광고 영역] ================= -->
+<div id="bottom-ad-banner" class="bottom-ad-banner" aria-label="하단 배너 광고">
+    <div class="bottom-ad-inner">
+        <!-- 나중에 Google AdSense 승인 후 아래 안내 문구 대신 애드센스 <ins class="adsbygoogle"> 코드를 붙여넣으면 실제 광고가 노출됩니다 -->
+        <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+            <span style="background: #2e7d32; color: #ffffff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;">AD</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #1b5e20;">우리집 가계부 &amp; 자산 · 배너 광고 자리 (320×50)</span>
+        </div>
+        <span style="font-size: 11px; color: #6b7684; flex-shrink: 0;">광고 영역</span>
+    </div>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+    }
 </script>
 </body>
 </html>
