@@ -463,7 +463,8 @@
                 <div class="calendar-day-header saturday">토</div>
             </div>
             <div id="calendar-body" class="calendar-grid" style="margin-top: 5px;"></div>
-        </div>
+        <div id="calendar-asset-summary" style="margin-top: 18px;"></div>
+    </div>
 
         <!-- ================= [자산 섹션] ================= -->
         <div id="asset-section" style="display: none;">
@@ -1714,6 +1715,187 @@
             cell.innerHTML = cellHtml;
             calBody.appendChild(cell);
         }
+        renderCalendarAssetSummary();
+    }
+
+    function renderCalendarAssetSummary() {
+        const summaryContainer = document.getElementById("calendar-asset-summary");
+        if (!summaryContainer) return;
+
+        const mm = String(currentCalMonth + 1).padStart(2, '0');
+        const ymPrefix = `${currentCalYear}-${mm}`;
+        const monthLabel = `${currentCalMonth + 1}월`;
+
+        const assetStats = {};
+        let unlinkedIncome = 0;
+        let unlinkedExpense = 0;
+        let unlinkedCount = 0;
+
+        allPayments.forEach(p => {
+            if (!p.date || !p.date.startsWith(ymPrefix)) return;
+            if (p.type === 'transfer') return;
+
+            const amt = Number(p.amount) || 0;
+            const asset = p.linkedAssetId ? allAssets.find(a => a.id === p.linkedAssetId) : null;
+
+            if (asset) {
+                if (!assetStats[asset.id]) {
+                    assetStats[asset.id] = { asset: asset, income: 0, expense: 0, count: 0 };
+                }
+                if (p.type === 'income') assetStats[asset.id].income += amt;
+                else assetStats[asset.id].expense += amt;
+                assetStats[asset.id].count += 1;
+            } else {
+                if (p.type === 'income') unlinkedIncome += amt;
+                else unlinkedExpense += amt;
+                unlinkedCount += 1;
+            }
+        });
+
+        const usedList = allAssets
+            .filter(a => assetStats[a.id])
+            .map(a => assetStats[a.id]);
+
+        let listHtml = '';
+        usedList.forEach(({ asset, income, expense, count }) => {
+            let typeIcon = '🏦';
+            if (asset.type === 'invest') typeIcon = '📈';
+            else if (asset.type === 'credit') typeIcon = '💳';
+
+            const incomeHtml = income > 0 ? `<span style="color: #1976d2; font-weight: 700;">+${income.toLocaleString()}원</span>` : '';
+            const expenseHtml = expense > 0 ? `<span style="color: #d32f2f; font-weight: 700;">-${expense.toLocaleString()}원</span>` : '';
+            const divider = (income > 0 && expense > 0) ? `<span style="color: #ccc; margin: 0 5px;">|</span>` : '';
+
+            listHtml += `
+                <div onclick="openAssetModalFromCalendar('${asset.id}')" style="background: #ffffff; border: 1px solid #e5e8eb; border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                        ${getOwnerBadgeHTML(asset.owner)}
+                        <span style="font-size: 13px;">${typeIcon}</span>
+                        <strong style="font-size: 14px; color: #191f28;">${asset.name}</strong>
+                        <span style="font-size: 11px; color: #8b95a1; margin-left: 2px;">(${count}건)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; text-align: right; white-space: nowrap;">
+                        <span>${incomeHtml}${divider}${expenseHtml}</span>
+                        <span style="color: #8b95a1; font-size: 12px;">▾</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (unlinkedCount > 0) {
+            const incomeHtml = unlinkedIncome > 0 ? `<span style="color: #1976d2; font-weight: 700;">+${unlinkedIncome.toLocaleString()}원</span>` : '';
+            const expenseHtml = unlinkedExpense > 0 ? `<span style="color: #d32f2f; font-weight: 700;">-${unlinkedExpense.toLocaleString()}원</span>` : '';
+            const divider = (unlinkedIncome > 0 && unlinkedExpense > 0) ? `<span style="color: #ccc; margin: 0 5px;">|</span>` : '';
+
+            listHtml += `
+                <div onclick="openAssetModalFromCalendar('unlinked')" style="background: #fafafa; border: 1px dashed #d9dfe6; border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span style="background: #f2f4f6; color: #6b7684; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-weight: 700;">미지정</span>
+                        <span style="font-size: 13.5px; color: #4e5968; font-weight: 600;">연결 자산 없음</span>
+                        <span style="font-size: 11px; color: #8b95a1;">(${unlinkedCount}건)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; text-align: right; white-space: nowrap;">
+                        <span>${incomeHtml}${divider}${expenseHtml}</span>
+                        <span style="color: #8b95a1; font-size: 12px;">▾</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (listHtml === '') {
+            listHtml = `<div style="text-align: center; color: #8b95a1; font-size: 13px; padding: 16px 8px;">${monthLabel}에 기록된 수입·지출 내역이 없습니다.</div>`;
+        }
+
+        summaryContainer.innerHTML = `
+            <div style="background: #f8faf9; border: 1px solid #d8e8dc; border-radius: 14px; padding: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #c8e6c9;">
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #1b5e20;">💳 ${monthLabel} 계좌·신용카드별 수입/지출</h3>
+                    <span style="font-size: 11px; color: #6b7684;">클릭 시 내역 팝업</span>
+                </div>
+                ${listHtml}
+            </div>
+        `;
+    }
+
+    function openAssetModalFromCalendar(assetId) {
+        const modal = document.getElementById('calendar-modal');
+        const title = document.getElementById('modal-date-title');
+        const summary = document.getElementById('modal-day-summary');
+        const list = document.getElementById('modal-day-list');
+        const addBtn = document.getElementById('modal-add-btn');
+
+        const mm = String(currentCalMonth + 1).padStart(2, '0');
+        const ymPrefix = `${currentCalYear}-${mm}`;
+        const monthLabel = `${currentCalMonth + 1}월`;
+
+        let matchedItems = [];
+        if (assetId === 'unlinked') {
+            title.innerText = `📋 ${monthLabel} 연결 자산 없음 내역`;
+            matchedItems = allPayments.filter(p =>
+                p.date && p.date.startsWith(ymPrefix) && p.type !== 'transfer' &&
+                (!p.linkedAssetId || !allAssets.some(a => a.id === p.linkedAssetId))
+            );
+        } else {
+            const asset = allAssets.find(a => a.id === assetId);
+            const ownerPrefix = asset ? (asset.owner === 'husband' ? '[남편] ' : (asset.owner === 'wife' ? '[아내] ' : '[공동] ')) : '';
+            title.innerText = `💳 ${monthLabel} ${ownerPrefix}${asset ? asset.name : ''} 내역`;
+            matchedItems = allPayments.filter(p =>
+                p.date && p.date.startsWith(ymPrefix) && p.type !== 'transfer' && p.linkedAssetId === assetId
+            );
+        }
+
+        matchedItems.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        let totalIncome = 0;
+        let totalExpense = 0;
+        list.innerHTML = '';
+
+        if (matchedItems.length === 0) {
+            list.innerHTML = '<div style="text-align: center; color: #888; padding: 30px 10px; font-size: 14px;">표시할 내역이 없습니다.</div>';
+        } else {
+            matchedItems.forEach(item => {
+                const amt = Number(item.amount) || 0;
+                let amountHtml = '';
+                let badgeHtml = '';
+
+                if (item.type === 'income') {
+                    totalIncome += amt;
+                    amountHtml = `<strong style="color: #1976d2;">+ ${amt.toLocaleString()}원</strong>`;
+                    badgeHtml = `<span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; font-size: 11px;">수입</span>`;
+                } else {
+                    totalExpense += amt;
+                    amountHtml = `<strong style="color: #d32f2f;">- ${amt.toLocaleString()}원</strong>`;
+                    badgeHtml = `<span style="background: #ffebee; color: #d32f2f; padding: 2px 6px; border-radius: 4px; font-size: 11px;">지출</span>`;
+                }
+
+                const memoHtml = item.memo ? `<div style="font-size: 11px; color: #888; margin-top: 2px;">📝 ${item.memo}</div>` : '';
+
+                const row = document.createElement('div');
+                row.style = "padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fafafa; border-radius: 6px; margin-bottom: 6px;";
+                row.innerHTML = `
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 11.5px; color: #888; margin-bottom: 3px;">${item.date} ${badgeHtml}</div>
+                        <div style="margin-bottom: 2px;"><strong>${item.merchant}</strong></div>
+                        <div style="font-size: 12px; color: #666;">[${item.category || '기타'}]</div>
+                        ${memoHtml}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                        ${amountHtml}
+                        <button onclick="editFromCalendar('${item.id}')" style="width: auto; padding: 5px 10px; background-color: #f57c00; font-size: 11px; margin-top: 0; color: white; border: none; border-radius: 4px; white-space: nowrap;">수정</button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        summary.innerHTML = `
+            <span style="color: #1976d2;">📈 수입: +${totalIncome.toLocaleString()}원</span>
+            <span style="color: #d32f2f;">📉 지출: -${totalExpense.toLocaleString()}원</span>
+        `;
+
+        addBtn.style.display = 'none';
+        modal.style.display = 'flex';
+        history.pushState({ section: currentSection, modal: true }, '');
     }
 
     function openCalendarModal(dateStr) {
@@ -1782,6 +1964,7 @@
             <span style="color: #d32f2f;">📉 지출: -${dayExpense.toLocaleString()}원</span>
         `;
 
+        addBtn.style.display = 'block';
         addBtn.onclick = () => addRecordForDate(dateStr);
         modal.style.display = 'flex';
         history.pushState({ section: currentSection, modal: true }, '');
