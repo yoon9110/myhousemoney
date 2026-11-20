@@ -850,7 +850,16 @@
     });
 
     function getCol(collectionName) {
-        if (auth.currentUser && auth.currentUser.email === 'family@myhouse.com') {
+        const sharedEmails = [
+            'family@myhouse.com',
+            'yoon911038@gmail.com',
+            '아내구글계정@gmail.com'
+        ];
+        const userEmail = (auth.currentUser && auth.currentUser.email)
+            ? auth.currentUser.email.toLowerCase().trim()
+            : '';
+
+        if (sharedEmails.map(e => e.toLowerCase().trim()).includes(userEmail)) {
             return db.collection(collectionName);
         }
         return db.collection(collectionName + "_" + currentUserUid);
