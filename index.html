@@ -1757,14 +1757,21 @@
                     if (asset) linkedStr = ` · 🔗 ${getOwnerBadgeHTML(asset.owner)}${asset.name}`;
                 }
 
+                const editBtnHtml = item.type !== 'transfer'
+                    ? `<button onclick="editFromCalendar('${item.id}')" style="width: auto; padding: 5px 10px; background-color: #f57c00; font-size: 11px; margin-top: 0; color: white; border: none; border-radius: 4px; white-space: nowrap;">수정</button>`
+                    : '';
+
                 const row = document.createElement('div');
-                row.style = "padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 6px; margin-bottom: 6px;";
+                row.style = "padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fafafa; border-radius: 6px; margin-bottom: 6px;";
                 row.innerHTML = `
-                    <div>
+                    <div style="flex: 1; min-width: 0;">
                         <div style="margin-bottom: 3px;">${badgeHtml} <strong>${item.merchant}</strong></div>
-                        <div style="font-size: 12px; color: #666; display: flex; align-items: center;">[${item.category || '기타'}]${linkedStr}</div>
+                        <div style="font-size: 12px; color: #666; display: flex; align-items: center; flex-wrap: wrap;">[${item.category || '기타'}]${linkedStr}</div>
                     </div>
-                    <div>${amountHtml}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                        ${amountHtml}
+                        ${editBtnHtml}
+                    </div>
                 `;
                 list.appendChild(row);
             });
@@ -1794,6 +1801,12 @@
         document.getElementById('date').value = dateStr;
         const inputBox = document.getElementById('ledger-input-box');
         if (inputBox) inputBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function editFromCalendar(id) {
+        closeCalendarModal();
+        showSection('ledger');
+        editDataById(id);
     }
 
     // ==========================================
